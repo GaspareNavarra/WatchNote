@@ -1,36 +1,10 @@
 :root {
-  --text: #1f1f28;
-  --text-muted: #6b6375;
-  --bg: #fdfdfd;
-  --bg-elevated: #ffffff;
-  --border: #e5e4e7;
-  --accent: #7c3aed;
-  --accent-bg: rgba(124, 58, 237, 0.1);
-  --danger: #dc2626;
-  --success: #16a34a;
-
   font: 16px/145% system-ui, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #f3f4f6;
-    --text-muted: #9ca3af;
-    --bg: #16171d;
-    --bg-elevated: #1e1f27;
-    --border: #2e303a;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --danger: #f87171;
-    --success: #4ade80;
-  }
 }
 
 * {
@@ -39,6 +13,8 @@
 
 body {
   margin: 0;
+  background: var(--p-content-background);
+  color: var(--p-text-color);
 }
 
 h1,
@@ -48,59 +24,6 @@ h3 {
   margin: 0 0 0.5rem;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
 a {
-  color: var(--accent);
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-}
-
-.btn:hover {
-  border-color: var(--accent);
-}
-
-.btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-}
-
-.btn-danger {
-  color: var(--danger);
-}
-
-.card {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg-elevated);
-  padding: 1rem;
-}
-
-input[type='text'],
-input[type='email'],
-input[type='password'],
-input[type='number'],
-select,
-textarea {
-  padding: 0.5rem 0.65rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  width: 100%;
+  color: var(--p-primary-color);
 }

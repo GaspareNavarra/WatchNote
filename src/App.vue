@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useAuthStore } from './stores/auth'
 import { useRouter } from 'vue-router'
+import Button from 'primevue/button'
+import Toast from 'primevue/toast'
+import ConfirmDialog from 'primevue/confirmdialog'
+import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -20,12 +23,14 @@ async function handleSignOut() {
       <RouterLink to="/" class="brand">WatchNote</RouterLink>
       <div class="header-actions">
         <span class="user-email">{{ email }}</span>
-        <button class="btn-link" @click="handleSignOut">Esci</button>
+        <Button label="Esci" text size="small" @click="handleSignOut" />
       </div>
     </header>
     <main>
       <RouterView />
     </main>
+    <Toast />
+    <ConfirmDialog />
   </div>
 </template>
 
@@ -41,7 +46,7 @@ async function handleSignOut() {
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--border-color, #2a2a2a);
+  border-bottom: 1px solid var(--p-content-border-color);
 }
 
 .brand {
@@ -60,16 +65,6 @@ async function handleSignOut() {
 
 .user-email {
   opacity: 0.7;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-  font: inherit;
-  padding: 0;
 }
 
 main {

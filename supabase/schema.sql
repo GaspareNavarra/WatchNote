@@ -15,13 +15,34 @@ create table if not exists public.titles (
   status text not null default 'plan_to_watch'
     check (status in ('plan_to_watch', 'watching', 'completed', 'dropped')),
   poster_url text,
+  overview text,
   notes text,
   rating smallint check (rating between 1 and 10),
+  external_source text check (external_source in ('tmdb', 'jikan')),
+  external_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+-- Safe to re-run on an already-created database (adds new columns introduced later):
+alter table public.titles add column if not exists overview text;
+alter table public.titles add column if not exists external_source text;
+alter table public.titles add column if not exists external_id text;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'titles_external_source_check'
+  ) then
+    alter table public.titles
+      add constraint titles_external_source_check
+      check (external_source in ('tmdb', 'jikan'));
+  end if;
+end $$;
+
 create index if not exists titles_user_id_idx on public.titles (user_id);
+create unique index if not exists titles_user_external_unique_idx
+  on public.titles (user_id, external_source, external_id)
+  where external_id is not null;
 
 create table if not exists public.episodes (
   id uuid primary key default gen_random_uuid(),

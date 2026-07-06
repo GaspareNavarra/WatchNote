@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import Button from 'primevue/button'
+import ProgressSpinner from 'primevue/progressspinner'
+import Message from 'primevue/message'
 import { useTitlesStore } from '../stores/titles'
 import type { TitleType } from '../types/database'
 import TitleCard from '../components/TitleCard.vue'
-import TitleFormModal from '../components/TitleFormModal.vue'
+import AddTitleDialog from '../components/AddTitleDialog.vue'
 
 const titlesStore = useTitlesStore()
 
 const filter = ref<'all' | TitleType>('all')
-const showAddModal = ref(false)
+const showAddDialog = ref(false)
 
 const tabs: { value: 'all' | TitleType; label: string }[] = [
   { value: 'all', label: 'Tutti' },
@@ -30,23 +36,19 @@ onMounted(() => {
 <template>
   <div class="home">
     <div class="toolbar">
-      <div class="tabs">
-        <button
-          v-for="tab in tabs"
-          :key="tab.value"
-          class="tab"
-          :class="{ active: filter === tab.value }"
-          @click="filter = tab.value"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
-      <button class="btn btn-primary" @click="showAddModal = true">+ Aggiungi</button>
+      <Tabs :value="filter" @update:value="(v) => (filter = v as 'all' | TitleType)">
+        <TabList>
+          <Tab v-for="tab in tabs" :key="tab.value" :value="tab.value">{{ tab.label }}</Tab>
+        </TabList>
+      </Tabs>
+      <Button label="Aggiungi" icon="pi pi-plus" @click="showAddDialog = true" />
     </div>
 
-    <p v-if="titlesStore.loading" class="empty">Caricamento...</p>
-    <p v-else-if="titlesStore.error" class="empty error">{{ titlesStore.error }}</p>
-    <p v-else-if="filteredTitles.length === 0" class="empty">
+    <div v-if="titlesStore.loading" class="empty">
+      <ProgressSpinner style="width: 2.5rem; height: 2.5rem" stroke-width="4" />
+    </div>
+    <Message v-else-if="titlesStore.error" severity="error" :closable="false">{{ titlesStore.error }}</Message>
+    <p v-else-if="filteredTitles.length === 0" class="empty-text">
       Nessun titolo qui. Aggiungine uno per iniziare a tenere traccia.
     </p>
 
@@ -54,11 +56,7 @@ onMounted(() => {
       <TitleCard v-for="title in filteredTitles" :key="title.id" :title="title" />
     </div>
 
-    <TitleFormModal
-      v-if="showAddModal"
-      :default-type="filter === 'all' ? 'movie' : filter"
-      @close="showAddModal = false"
-    />
+    <AddTitleDialog v-if="showAddDialog" @close="showAddDialog = false" />
   </div>
 </template>
 
@@ -78,33 +76,16 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.tabs {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.tab {
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.85rem;
-}
-
-.tab.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-}
-
 .empty {
-  color: var(--text-muted);
-  text-align: center;
+  display: flex;
+  justify-content: center;
   padding: 2rem 0;
 }
 
-.empty.error {
-  color: var(--danger);
+.empty-text {
+  color: var(--p-text-muted-color);
+  text-align: center;
+  padding: 2rem 0;
 }
 
 .grid {

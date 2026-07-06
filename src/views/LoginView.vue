@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import Card from 'primevue/card'
+import InputText from 'primevue/inputtext'
+import Password from 'primevue/password'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
+import Divider from 'primevue/divider'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -12,6 +18,7 @@ const password = ref('')
 const error = ref('')
 const info = ref('')
 const loading = ref(false)
+const googleLoading = ref(false)
 
 async function handleSubmit() {
   error.value = ''
@@ -36,6 +43,18 @@ async function handleSubmit() {
   }
 }
 
+async function handleGoogleSignIn() {
+  error.value = ''
+  googleLoading.value = true
+  try {
+    await auth.signInWithGoogle()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Errore durante il login con Google'
+  } finally {
+    googleLoading.value = false
+  }
+}
+
 function toggleMode() {
   mode.value = mode.value === 'signin' ? 'signup' : 'signin'
   error.value = ''
@@ -45,33 +64,57 @@ function toggleMode() {
 
 <template>
   <div class="login-page">
-    <form class="card login-card" @submit.prevent="handleSubmit">
-      <h1>WatchNote</h1>
-      <p class="subtitle">
+    <Card class="login-card">
+      <template #title>WatchNote</template>
+      <template #subtitle>
         {{ mode === 'signin' ? 'Accedi al tuo account' : 'Crea un nuovo account' }}
-      </p>
+      </template>
+      <template #content>
+        <Button
+          label="Accedi con Google"
+          icon="pi pi-google"
+          severity="secondary"
+          outlined
+          class="google-btn"
+          :loading="googleLoading"
+          @click="handleGoogleSignIn"
+        />
 
-      <label>
-        Email
-        <input v-model="email" type="email" required autocomplete="email" />
-      </label>
+        <Divider align="center"><span class="divider-text">oppure</span></Divider>
 
-      <label>
-        Password
-        <input v-model="password" type="password" required autocomplete="current-password" minlength="6" />
-      </label>
+        <form class="form" @submit.prevent="handleSubmit">
+          <label class="field">
+            <span>Email</span>
+            <InputText v-model="email" type="email" required autocomplete="email" />
+          </label>
 
-      <p v-if="error" class="message error">{{ error }}</p>
-      <p v-if="info" class="message info">{{ info }}</p>
+          <label class="field">
+            <span>Password</span>
+            <Password
+              v-model="password"
+              :feedback="false"
+              toggle-mask
+              required
+              autocomplete="current-password"
+              :input-props="{ minlength: 6 }"
+            />
+          </label>
 
-      <button class="btn btn-primary" type="submit" :disabled="loading">
-        {{ mode === 'signin' ? 'Accedi' : 'Registrati' }}
-      </button>
+          <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
+          <Message v-if="info" severity="success" :closable="false">{{ info }}</Message>
 
-      <button class="btn-link" type="button" @click="toggleMode">
-        {{ mode === 'signin' ? 'Non hai un account? Registrati' : 'Hai già un account? Accedi' }}
-      </button>
-    </form>
+          <Button type="submit" :label="mode === 'signin' ? 'Accedi' : 'Registrati'" :loading="loading" />
+
+          <Button
+            type="button"
+            link
+            class="toggle-link"
+            :label="mode === 'signin' ? 'Non hai un account? Registrati' : 'Hai già un account? Accedi'"
+            @click="toggleMode"
+          />
+        </form>
+      </template>
+    </Card>
   </div>
 </template>
 
@@ -86,43 +129,37 @@ function toggleMode() {
 
 .login-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 380px;
+}
+
+.google-btn {
+  width: 100%;
+}
+
+.divider-text {
+  color: var(--p-text-muted-color);
+  font-size: 0.8rem;
+}
+
+.form {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
 
-.subtitle {
-  color: var(--text-muted);
-  margin: 0 0 0.5rem;
-}
-
-label {
+.field {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   font-size: 0.9rem;
 }
 
-.message {
-  font-size: 0.85rem;
-  margin: 0;
+.field :deep(input) {
+  width: 100%;
 }
 
-.message.error {
-  color: var(--danger);
-}
-
-.message.info {
-  color: var(--success);
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: var(--accent);
-  text-decoration: underline;
-  padding: 0;
+.toggle-link {
+  align-self: center;
   font-size: 0.85rem;
 }
 </style>

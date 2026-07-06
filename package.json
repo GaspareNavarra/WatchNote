@@ -6,15 +6,23 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:open": "npm run build && npx cap sync android && npx cap open android",
+    "android:run": "npm run build && npx cap sync android && npx cap run android",
+    "ios:open": "npm run build && npx cap sync ios && npx cap open ios"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/browser": "^8.0.3",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/ios": "^8.4.1",
+    "@primeuix/themes": "^2.0.3",
     "@supabase/supabase-js": "^2.110.0",
     "pinia": "^3.0.4",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.5.5",
     "vue": "^3.5.39",
     "vue-router": "^5.1.0"
   },

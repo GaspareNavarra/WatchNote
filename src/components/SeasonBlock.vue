@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import Checkbox from 'primevue/checkbox'
+import Button from 'primevue/button'
 import { useTitlesStore } from '../stores/titles'
 import type { EpisodeRow } from '../types/database'
 
@@ -33,17 +35,17 @@ async function removeEpisode(episode: EpisodeRow) {
       <h3>Stagione {{ seasonNumber }}</h3>
       <div class="season-actions">
         <span class="count">{{ watchedCount }}/{{ episodes.length }}</span>
-        <button class="btn-link" @click="markAllWatched(true)">Segna tutti</button>
-        <button class="btn-link" @click="markAllWatched(false)">Azzera</button>
+        <Button label="Segna tutti" link size="small" @click="markAllWatched(true)" />
+        <Button label="Azzera" link size="small" @click="markAllWatched(false)" />
       </div>
     </div>
     <ul class="episode-list">
       <li v-for="episode in sorted" :key="episode.id" class="episode-row">
-        <label>
-          <input type="checkbox" :checked="episode.watched" @change="toggle(episode)" />
+        <label class="episode-label">
+          <Checkbox :model-value="episode.watched" binary @update:model-value="toggle(episode)" />
           <span>Episodio {{ episode.episode_number }}<template v-if="episode.name"> — {{ episode.name }}</template></span>
         </label>
-        <button class="btn-icon" title="Elimina episodio" @click="removeEpisode(episode)">✕</button>
+        <Button icon="pi pi-times" text rounded size="small" severity="secondary" @click="removeEpisode(episode)" />
       </li>
     </ul>
   </div>
@@ -51,7 +53,7 @@ async function removeEpisode(episode: EpisodeRow) {
 
 <style scoped>
 .season {
-  border: 1px solid var(--border);
+  border: 1px solid var(--p-content-border-color);
   border-radius: 10px;
   padding: 0.85rem;
 }
@@ -65,6 +67,10 @@ async function removeEpisode(episode: EpisodeRow) {
   gap: 0.4rem;
 }
 
+.season h3 {
+  margin: 0;
+}
+
 .season-actions {
   display: flex;
   align-items: center;
@@ -73,16 +79,7 @@ async function removeEpisode(episode: EpisodeRow) {
 }
 
 .count {
-  color: var(--text-muted);
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: var(--accent);
-  text-decoration: underline;
-  padding: 0;
-  font-size: 0.8rem;
+  color: var(--p-text-muted-color);
 }
 
 .episode-list {
@@ -101,29 +98,11 @@ async function removeEpisode(episode: EpisodeRow) {
   gap: 0.5rem;
 }
 
-.episode-row label {
+.episode-label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   font-size: 0.9rem;
   cursor: pointer;
-}
-
-.episode-row input[type='checkbox'] {
-  width: auto;
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  font-size: 0.85rem;
-  padding: 0.2rem;
-  border-radius: 4px;
-  color: var(--text-muted);
-}
-
-.btn-icon:hover {
-  background: var(--accent-bg);
-  color: var(--danger);
 }
 </style>

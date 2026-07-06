@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useConfirm } from 'primevue/useconfirm'
+import Button from 'primevue/button'
+import InputNumber from 'primevue/inputnumber'
+import ProgressBar from 'primevue/progressbar'
+import ProgressSpinner from 'primevue/progressspinner'
+import Message from 'primevue/message'
+import Card from 'primevue/card'
 import { useTitlesStore } from '../stores/titles'
 import SeasonBlock from '../components/SeasonBlock.vue'
 
@@ -8,6 +15,7 @@ const props = defineProps<{ id: string }>()
 
 const titlesStore = useTitlesStore()
 const router = useRouter()
+const confirm = useConfirm()
 
 const loading = ref(true)
 const newSeasonNumber = ref(1)
@@ -43,16 +51,24 @@ async function handleAddSeason() {
     await titlesStore.addSeason(props.id, newSeasonNumber.value, newSeasonEpisodeCount.value)
     newSeasonNumber.value += 1
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Errore durante l\'aggiunta della stagione'
+    error.value = e instanceof Error ? e.message : "Errore durante l'aggiunta della stagione"
   }
 }
 
-async function handleDeleteTitle() {
+function handleDeleteTitle() {
   if (!title.value) return
-  if (confirm(`Eliminare "${title.value.name}" e tutti i suoi episodi?`)) {
-    await titlesStore.deleteTitle(props.id)
-    router.push({ name: 'home' })
-  }
+  confirm.require({
+    message: `Eliminare "${title.value.name}" e tutti i suoi episodi?`,
+    header: 'Conferma eliminazione',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Elimina',
+    rejectLabel: 'Annulla',
+    acceptProps: { severity: 'danger' },
+    accept: async () => {
+      await titlesStore.deleteTitle(props.id)
+      router.push({ name: 'home' })
+    },
+  })
 }
 </script>
 
@@ -60,19 +76,18 @@ async function handleDeleteTitle() {
   <div class="detail">
     <RouterLink to="/" class="back">← Torna alla lista</RouterLink>
 
-    <p v-if="loading">Caricamento...</p>
+    <div v-if="loading" class="loading"><ProgressSpinner style="width: 2.5rem; height: 2.5rem" /></div>
     <p v-else-if="!title">Titolo non trovato.</p>
 
     <template v-else>
       <div class="header">
         <img v-if="title.poster_url" :src="title.poster_url" alt="" class="poster" />
-        <div>
+        <div class="header-info">
           <h1>{{ title.name }}</h1>
+          <p v-if="title.overview" class="overview">{{ title.overview }}</p>
           <p class="meta">{{ progress.watched }}/{{ progress.total }} episodi visti ({{ progress.percent }}%)</p>
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: progress.percent + '%' }"></div>
-          </div>
-          <button class="btn btn-danger" @click="handleDeleteTitle">Elimina titolo</button>
+          <ProgressBar :value="progress.percent" :show-value="false" class="progress" />
+          <Button label="Elimina titolo" icon="pi pi-trash" severity="danger" outlined size="small" @click="handleDeleteTitle" />
         </div>
       </div>
 
@@ -86,21 +101,25 @@ async function handleDeleteTitle() {
         />
       </div>
 
-      <form class="card add-season" @submit.prevent="handleAddSeason">
-        <h3>Aggiungi stagione</h3>
-        <div class="fields">
-          <label>
-            Numero stagione
-            <input v-model.number="newSeasonNumber" type="number" min="1" required />
-          </label>
-          <label>
-            Numero episodi
-            <input v-model.number="newSeasonEpisodeCount" type="number" min="1" required />
-          </label>
-        </div>
-        <p v-if="error" class="message error">{{ error }}</p>
-        <button type="submit" class="btn btn-primary">Aggiungi</button>
-      </form>
+      <Card>
+        <template #title>Aggiungi stagione</template>
+        <template #content>
+          <form class="add-season" @submit.prevent="handleAddSeason">
+            <div class="fields">
+              <label class="field">
+                <span>Numero stagione</span>
+                <InputNumber v-model="newSeasonNumber" :min="1" show-buttons button-layout="horizontal" />
+              </label>
+              <label class="field">
+                <span>Numero episodi</span>
+                <InputNumber v-model="newSeasonEpisodeCount" :min="1" show-buttons button-layout="horizontal" />
+              </label>
+            </div>
+            <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
+            <Button type="submit" label="Aggiungi" />
+          </form>
+        </template>
+      </Card>
     </template>
   </div>
 </template>
@@ -119,6 +138,12 @@ async function handleDeleteTitle() {
   text-decoration: none;
 }
 
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
 .header {
   display: flex;
   gap: 1rem;
@@ -133,23 +158,25 @@ async function handleDeleteTitle() {
   flex-shrink: 0;
 }
 
-.meta {
-  color: var(--text-muted);
+.header-info h1 {
+  margin: 0 0 0.4rem;
+}
+
+.overview {
+  font-size: 0.9rem;
+  color: var(--p-text-muted-color);
   margin: 0 0 0.5rem;
 }
 
-.progress-bar {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--border);
-  overflow: hidden;
-  margin-bottom: 0.75rem;
-  max-width: 260px;
+.meta {
+  color: var(--p-text-muted-color);
+  margin: 0 0 0.5rem;
 }
 
-.progress-fill {
-  height: 100%;
-  background: var(--accent);
+.progress {
+  max-width: 260px;
+  height: 8px;
+  margin-bottom: 0.75rem;
 }
 
 .seasons {
@@ -162,25 +189,20 @@ async function handleDeleteTitle() {
 .add-season {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.75rem;
 }
 
 .fields {
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.fields label {
+.field {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   font-size: 0.9rem;
   flex: 1;
-}
-
-.message.error {
-  color: var(--danger);
-  font-size: 0.85rem;
-  margin: 0;
 }
 </style>

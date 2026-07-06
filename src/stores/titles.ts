@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
-import type { EpisodeRow, TitleRow, TitleStatus, TitleType } from '../types/database'
+import type { EpisodeRow, ExternalSource, TitleRow, TitleStatus, TitleType } from '../types/database'
 import { useAuthStore } from './auth'
 
 interface NewTitleInput {
@@ -8,8 +8,16 @@ interface NewTitleInput {
   type: TitleType
   status?: TitleStatus
   poster_url?: string | null
+  overview?: string | null
   notes?: string | null
   rating?: number | null
+  external_source?: ExternalSource | null
+  external_id?: string | null
+}
+
+interface ImportedEpisode {
+  episodeNumber: number
+  name: string | null
 }
 
 export const useTitlesStore = defineStore('titles', {
@@ -94,6 +102,21 @@ export const useTitlesStore = defineStore('titles', {
         title_id: titleId,
         season_number: seasonNumber,
         episode_number: i + 1,
+      }))
+      const { data, error } = await supabase.from('episodes').insert(rows).select()
+      if (error) throw error
+      const existing = this.episodesByTitle[titleId] ?? []
+      this.episodesByTitle[titleId] = [...existing, ...(data ?? [])]
+      return data ?? []
+    },
+
+    async importEpisodes(titleId: string, seasonNumber: number, episodes: ImportedEpisode[]) {
+      if (episodes.length === 0) return []
+      const rows = episodes.map((e) => ({
+        title_id: titleId,
+        season_number: seasonNumber,
+        episode_number: e.episodeNumber,
+        name: e.name,
       }))
       const { data, error } = await supabase.from('episodes').insert(rows).select()
       if (error) throw error
