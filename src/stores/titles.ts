@@ -29,6 +29,7 @@ export const useTitlesStore = defineStore('titles', {
   }),
   getters: {
     byType: (state) => (type: TitleType) => state.titles.filter((t) => t.type === type),
+    byStatus: (state) => (status: TitleStatus) => state.titles.filter((t) => t.status === status),
     progress: (state) => (titleId: string) => {
       const episodes = state.episodesByTitle[titleId] ?? []
       if (episodes.length === 0) return { watched: 0, total: 0, percent: 0 }
@@ -107,6 +108,7 @@ export const useTitlesStore = defineStore('titles', {
       if (error) throw error
       const existing = this.episodesByTitle[titleId] ?? []
       this.episodesByTitle[titleId] = [...existing, ...(data ?? [])]
+      await this.recomputeStatus(titleId)
       return data ?? []
     },
 
@@ -122,6 +124,7 @@ export const useTitlesStore = defineStore('titles', {
       if (error) throw error
       const existing = this.episodesByTitle[titleId] ?? []
       this.episodesByTitle[titleId] = [...existing, ...(data ?? [])]
+      await this.recomputeStatus(titleId)
       return data ?? []
     },
 
@@ -134,6 +137,7 @@ export const useTitlesStore = defineStore('titles', {
       if (error) throw error
       const existing = this.episodesByTitle[titleId] ?? []
       this.episodesByTitle[titleId] = [...existing, data]
+      await this.recomputeStatus(titleId)
       return data
     },
 
@@ -149,6 +153,7 @@ export const useTitlesStore = defineStore('titles', {
       const idx = existing.findIndex((e) => e.id === episodeId)
       if (idx !== -1) existing[idx] = data
       this.episodesByTitle[titleId] = [...existing]
+      await this.recomputeStatus(titleId)
       return data
     },
 
@@ -156,6 +161,35 @@ export const useTitlesStore = defineStore('titles', {
       const { error } = await supabase.from('episodes').delete().eq('id', episodeId)
       if (error) throw error
       this.episodesByTitle[titleId] = (this.episodesByTitle[titleId] ?? []).filter((e) => e.id !== episodeId)
+      await this.recomputeStatus(titleId)
+    },
+
+    async recomputeStatus(titleId: string) {
+      const title = this.titles.find((t) => t.id === titleId)
+      if (!title || title.status === 'dropped') return
+      const episodes = this.episodesByTitle[titleId] ?? []
+      const watched = episodes.filter((e) => e.watched).length
+      const total = episodes.length
+      const next: TitleStatus =
+        total === 0 || watched === 0 ? 'plan_to_watch' : watched === total ? 'completed' : 'watching'
+      if (next !== title.status) await this.updateTitle(titleId, { status: next })
+    },
+
+    async dropTitle(id: string) {
+      return this.updateTitle(id, { status: 'dropped' })
+    },
+
+    async undropTitle(id: string) {
+      const title = this.titles.find((t) => t.id === id)
+      if (!title) return
+      if (title.type === 'movie') {
+        return this.updateTitle(id, { status: 'plan_to_watch' })
+      }
+      const episodes = this.episodesByTitle[id] ?? (await this.fetchEpisodes(id))
+      const watched = episodes.filter((e) => e.watched).length
+      const total = episodes.length
+      const next: TitleStatus = total === 0 || watched === 0 ? 'plan_to_watch' : watched === total ? 'completed' : 'watching'
+      return this.updateTitle(id, { status: next })
     },
   },
 })

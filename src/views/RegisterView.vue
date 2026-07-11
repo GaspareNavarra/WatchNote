@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
@@ -13,15 +13,32 @@ const router = useRouter()
 
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const error = ref('')
+const info = ref('')
 const loading = ref(false)
+
+const passwordsMismatch = computed(
+  () => confirmPassword.value.length > 0 && password.value !== confirmPassword.value
+)
 
 async function handleSubmit() {
   error.value = ''
+  info.value = ''
+
+  if (password.value !== confirmPassword.value) {
+    error.value = 'Le password non coincidono'
+    return
+  }
+
   loading.value = true
   try {
-    await auth.signIn(email.value, password.value)
-    router.push({ name: 'home' })
+    await auth.signUp(email.value, password.value)
+    if (!auth.session) {
+      info.value = 'Controlla la tua email per confermare la registrazione.'
+    } else {
+      router.push({ name: 'home' })
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Si è verificato un errore'
   } finally {
@@ -31,10 +48,10 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="login-page">
-    <Card class="login-card">
+  <div class="register-page">
+    <Card class="register-card">
       <template #title>WatchNote</template>
-      <template #subtitle>Accedi al tuo account</template>
+      <template #subtitle>Crea un nuovo account</template>
       <template #content>
         <form class="form" @submit.prevent="handleSubmit">
           <label class="field">
@@ -49,21 +66,36 @@ async function handleSubmit() {
               :feedback="false"
               toggle-mask
               required
-              autocomplete="current-password"
+              autocomplete="new-password"
               :input-props="{ minlength: 6 }"
             />
           </label>
 
-          <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
+          <label class="field">
+            <span>Conferma password</span>
+            <Password
+              v-model="confirmPassword"
+              :feedback="false"
+              toggle-mask
+              required
+              autocomplete="new-password"
+              :input-props="{ minlength: 6 }"
+              :invalid="passwordsMismatch"
+            />
+            <small v-if="passwordsMismatch" class="mismatch">Le password non coincidono</small>
+          </label>
 
-          <Button type="submit" label="Accedi" :loading="loading" />
+          <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
+          <Message v-if="info" severity="success" :closable="false">{{ info }}</Message>
+
+          <Button type="submit" label="Registrati" :loading="loading" />
 
           <Button
             type="button"
             link
             class="toggle-link"
-            label="Non hai un account? Registrati"
-            @click="router.push({ name: 'register' })"
+            label="Hai già un account? Accedi"
+            @click="router.push({ name: 'login' })"
           />
         </form>
       </template>
@@ -72,7 +104,7 @@ async function handleSubmit() {
 </template>
 
 <style scoped>
-.login-page {
+.register-page {
   min-height: 100svh;
   display: flex;
   align-items: center;
@@ -80,7 +112,7 @@ async function handleSubmit() {
   padding: 1rem;
 }
 
-.login-card {
+.register-card {
   width: 100%;
   max-width: 380px;
 }
@@ -100,6 +132,10 @@ async function handleSubmit() {
 
 .field :deep(input) {
   width: 100%;
+}
+
+.mismatch {
+  color: var(--p-red-500);
 }
 
 .toggle-link {

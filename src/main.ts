@@ -8,6 +8,7 @@ import 'primeicons/primeicons.css'
 import './style.css'
 import App from './App.vue'
 import router from './router'
+import { useThemeStore } from './stores/theme'
 
 const app = createApp(App)
 
@@ -27,5 +28,7 @@ app.use(PrimeVue, {
 })
 app.use(ToastService)
 app.use(ConfirmationService)
+
+useThemeStore().apply()
 
 app.mount('#app')

@@ -3,30 +3,77 @@ import { computed, onMounted, ref } from 'vue'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
-import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import SelectButton from 'primevue/selectbutton'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
+import Tag from 'primevue/tag'
 import { useTitlesStore } from '../stores/titles'
-import type { TitleType } from '../types/database'
-import TitleCard from '../components/TitleCard.vue'
-import AddTitleDialog from '../components/AddTitleDialog.vue'
+import type { TitleStatus, TitleType } from '../types/database'
+import TitlePoster from '../components/TitlePoster.vue'
 
 const titlesStore = useTitlesStore()
 
-const filter = ref<'all' | TitleType>('all')
-const showAddDialog = ref(false)
+type StatusTab = 'all' | TitleStatus
 
-const tabs: { value: 'all' | TitleType; label: string }[] = [
-  { value: 'all', label: 'Tutti' },
-  { value: 'movie', label: 'Film' },
-  { value: 'series', label: 'Serie TV' },
-  { value: 'anime', label: 'Anime' },
+const query = ref('')
+const typeFilter = ref<'all' | TitleType>('all')
+const statusTab = ref<StatusTab>('all')
+
+const typeOptions: { label: string; value: 'all' | TitleType }[] = [
+  { label: 'Tutti', value: 'all' },
+  { label: 'Film', value: 'movie' },
+  { label: 'Serie', value: 'series' },
+  { label: 'Anime', value: 'anime' },
 ]
 
-const filteredTitles = computed(() => {
-  if (filter.value === 'all') return titlesStore.titles
-  return titlesStore.byType(filter.value)
+const statusTabs: { value: StatusTab; label: string }[] = [
+  { value: 'all', label: 'Tutti' },
+  { value: 'plan_to_watch', label: 'Da vedere' },
+  { value: 'watching', label: 'In corso' },
+  { value: 'completed', label: 'Visti' },
+  { value: 'dropped', label: 'Abbandonati' },
+]
+
+const statusSeverity: Record<TitleStatus, 'secondary' | 'info' | 'success' | 'danger'> = {
+  plan_to_watch: 'secondary',
+  watching: 'info',
+  completed: 'success',
+  dropped: 'danger',
+}
+
+const statusOrder: TitleStatus[] = ['plan_to_watch', 'watching', 'completed', 'dropped']
+
+const searchFiltered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return titlesStore.titles.filter(
+    (t) =>
+      (typeFilter.value === 'all' || t.type === typeFilter.value) &&
+      (!q || t.name.toLowerCase().includes(q))
+  )
 })
+
+const groups = computed(() => ({
+  all: searchFiltered.value,
+  plan_to_watch: searchFiltered.value.filter((t) => t.status === 'plan_to_watch'),
+  watching: searchFiltered.value.filter((t) => t.status === 'watching'),
+  completed: searchFiltered.value.filter((t) => t.status === 'completed'),
+  dropped: searchFiltered.value.filter((t) => t.status === 'dropped'),
+}))
+
+const activeTitles = computed(() => groups.value[statusTab.value])
+
+const sections = computed(() =>
+  statusOrder
+    .map((status) => ({
+      status,
+      label: statusTabs.find((t) => t.value === status)!.label,
+      items: groups.value[status],
+    }))
+    .filter((section) => section.items.length > 0)
+)
 
 onMounted(() => {
   titlesStore.fetchTitles()
@@ -36,27 +83,49 @@ onMounted(() => {
 <template>
   <div class="home">
     <div class="toolbar">
-      <Tabs :value="filter" @update:value="(v) => (filter = v as 'all' | TitleType)">
-        <TabList>
-          <Tab v-for="tab in tabs" :key="tab.value" :value="tab.value">{{ tab.label }}</Tab>
-        </TabList>
-      </Tabs>
-      <Button label="Aggiungi" icon="pi pi-plus" @click="showAddDialog = true" />
+      <IconField class="search-field">
+        <InputIcon class="pi pi-search" />
+        <InputText v-model="query" placeholder="Cerca nella libreria..." class="search-input" />
+      </IconField>
+      <SelectButton
+        v-model="typeFilter"
+        :options="typeOptions"
+        option-label="label"
+        option-value="value"
+        :allow-empty="false"
+        class="type-filter"
+      />
     </div>
+
+    <Tabs :value="statusTab" @update:value="(v) => (statusTab = v as StatusTab)">
+      <TabList>
+        <Tab v-for="tab in statusTabs" :key="tab.value" :value="tab.value">{{ tab.label }}</Tab>
+      </TabList>
+    </Tabs>
 
     <div v-if="titlesStore.loading" class="empty">
       <ProgressSpinner style="width: 2.5rem; height: 2.5rem" stroke-width="4" />
     </div>
     <Message v-else-if="titlesStore.error" severity="error" :closable="false">{{ titlesStore.error }}</Message>
-    <p v-else-if="filteredTitles.length === 0" class="empty-text">
-      Nessun titolo qui. Aggiungine uno per iniziare a tenere traccia.
-    </p>
 
-    <div v-else class="grid">
-      <TitleCard v-for="title in filteredTitles" :key="title.id" :title="title" />
-    </div>
+    <template v-else-if="statusTab === 'all'">
+      <p v-if="sections.length === 0" class="empty-text">Nessun titolo qui.</p>
+      <div v-else class="section" v-for="section in sections" :key="section.status">
+        <div class="section-heading">
+          <Tag :value="section.label" :severity="statusSeverity[section.status]" />
+        </div>
+        <div class="grid">
+          <TitlePoster v-for="title in section.items" :key="title.id" :title="title" />
+        </div>
+      </div>
+    </template>
 
-    <AddTitleDialog v-if="showAddDialog" @close="showAddDialog = false" />
+    <template v-else>
+      <p v-if="activeTitles.length === 0" class="empty-text">Nessun titolo qui.</p>
+      <div v-else class="grid">
+        <TitlePoster v-for="title in activeTitles" :key="title.id" :title="title" />
+      </div>
+    </template>
   </div>
 </template>
 
@@ -70,10 +139,22 @@ onMounted(() => {
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
   flex-wrap: wrap;
+}
+
+.search-field {
+  flex: 1;
+  min-width: 160px;
+}
+
+.search-input {
+  width: 100%;
+}
+
+.type-filter :deep(.p-togglebutton) {
+  padding-inline: 0.6rem;
 }
 
 .empty {
@@ -90,7 +171,26 @@ onMounted(() => {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.section {
+  margin-top: 2rem;
+}
+
+.section:first-child {
+  margin-top: 1rem;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: center;
+}
+
+.section-heading :deep(.p-tag) {
+  font-size: 0.8rem;
+  padding: 0.3rem 0.9rem;
 }
 </style>

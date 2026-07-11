@@ -29,6 +29,18 @@ export type EpisodeRow = {
   created_at: string
 }
 
+export type FeatureRequestStatus = 'pending' | 'in_review' | 'done' | 'rejected'
+
+export type FeatureRequestRow = {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  status: FeatureRequestStatus
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   __InternalSupabase: {
     PostgrestVersion: '13'
@@ -45,6 +57,12 @@ export type Database = {
         Row: EpisodeRow
         Insert: Partial<EpisodeRow> & { title_id: string; season_number: number; episode_number: number }
         Update: Partial<EpisodeRow>
+        Relationships: []
+      }
+      feature_requests: {
+        Row: FeatureRequestRow
+        Insert: Partial<FeatureRequestRow> & { title: string; user_id: string }
+        Update: Partial<FeatureRequestRow>
         Relationships: []
       }
     }

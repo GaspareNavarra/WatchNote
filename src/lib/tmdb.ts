@@ -93,6 +93,42 @@ export async function searchTv(query: string): Promise<TmdbSearchResult[]> {
   }))
 }
 
+type TmdbRawTrendingItem = {
+  id: number
+  media_type: 'movie' | 'tv' | 'person'
+  title?: string
+  name?: string
+  overview: string
+  poster_path: string | null
+  release_date?: string | null
+  first_air_date?: string | null
+}
+
+export async function getTrendingAll(): Promise<TmdbSearchResult[]> {
+  const data = await tmdbFetch<{ results: TmdbRawTrendingItem[] }>('/trending/all/week')
+  return data.results
+    .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
+    .map((r) =>
+      r.media_type === 'movie'
+        ? {
+            id: r.id,
+            mediaType: 'movie' as const,
+            title: r.title ?? '',
+            overview: r.overview,
+            posterPath: r.poster_path,
+            year: r.release_date ? r.release_date.slice(0, 4) : null,
+          }
+        : {
+            id: r.id,
+            mediaType: 'tv' as const,
+            title: r.name ?? '',
+            overview: r.overview,
+            posterPath: r.poster_path,
+            year: r.first_air_date ? r.first_air_date.slice(0, 4) : null,
+          }
+    )
+}
+
 export async function getTvDetails(tvId: number): Promise<TmdbTvDetails> {
   const data = await tmdbFetch<{
     id: number

@@ -40,8 +40,9 @@ begin
 end $$;
 
 create index if not exists titles_user_id_idx on public.titles (user_id);
-create unique index if not exists titles_user_external_unique_idx
-  on public.titles (user_id, external_source, external_id)
+drop index if exists titles_user_external_unique_idx;
+create unique index if not exists titles_user_external_type_unique_idx
+  on public.titles (user_id, external_source, external_id, type)
   where external_id is not null;
 
 create table if not exists public.episodes (
@@ -162,3 +163,64 @@ create policy "Episodes are deletable by owner"
     select 1 from public.titles t
     where t.id = episodes.title_id and t.user_id = auth.uid()
   ));
+
+-- ============================================================
+-- Feature requests (self-service user feedback, rate-limited)
+-- ============================================================
+
+create table if not exists public.feature_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  title text not null,
+  description text,
+  status text not null default 'pending'
+    check (status in ('pending', 'in_review', 'done', 'rejected')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists feature_requests_user_id_idx on public.feature_requests (user_id);
+
+drop trigger if exists feature_requests_set_updated_at on public.feature_requests;
+create trigger feature_requests_set_updated_at
+  before update on public.feature_requests
+  for each row
+  execute function public.set_updated_at();
+
+create or replace function public.enforce_feature_request_limit()
+returns trigger
+language plpgsql
+as $$
+declare
+  today_count int;
+begin
+  select count(*) into today_count
+  from public.feature_requests
+  where user_id = new.user_id
+    and created_at >= date_trunc('day', now());
+
+  if today_count >= 3 then
+    raise exception 'Hai raggiunto il limite di 3 richieste al giorno. Riprova domani.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists feature_requests_rate_limit on public.feature_requests;
+create trigger feature_requests_rate_limit
+  before insert on public.feature_requests
+  for each row
+  execute function public.enforce_feature_request_limit();
+
+alter table public.feature_requests enable row level security;
+
+drop policy if exists "Feature requests are viewable by owner" on public.feature_requests;
+create policy "Feature requests are viewable by owner"
+  on public.feature_requests for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Feature requests are insertable by owner" on public.feature_requests;
+create policy "Feature requests are insertable by owner"
+  on public.feature_requests for insert
+  with check (auth.uid() = user_id);

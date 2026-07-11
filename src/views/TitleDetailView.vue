@@ -8,6 +8,7 @@ import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Card from 'primevue/card'
+import Tag from 'primevue/tag'
 import { useTitlesStore } from '../stores/titles'
 import SeasonBlock from '../components/SeasonBlock.vue'
 
@@ -25,6 +26,16 @@ const error = ref('')
 const title = computed(() => titlesStore.titles.find((t) => t.id === props.id))
 const episodes = computed(() => titlesStore.episodesByTitle[props.id] ?? [])
 const progress = computed(() => titlesStore.progress(props.id))
+const isMovie = computed(() => title.value?.type === 'movie')
+const isDropped = computed(() => title.value?.status === 'dropped')
+const isMovieWatched = computed(() => title.value?.status === 'completed')
+
+const statusLabels: Record<string, string> = {
+  plan_to_watch: 'Da vedere',
+  watching: 'In corso',
+  completed: 'Completato',
+  dropped: 'Abbandonato',
+}
 
 const seasons = computed(() => {
   const map = new Map<number, typeof episodes.value>()
@@ -39,11 +50,28 @@ onMounted(async () => {
   if (titlesStore.titles.length === 0) {
     await titlesStore.fetchTitles()
   }
-  await titlesStore.fetchEpisodes(props.id)
-  const existingSeasons = [...new Set(episodes.value.map((e) => e.season_number))]
-  newSeasonNumber.value = existingSeasons.length > 0 ? Math.max(...existingSeasons) + 1 : 1
+  if (!isMovie.value) {
+    await titlesStore.fetchEpisodes(props.id)
+    const existingSeasons = [...new Set(episodes.value.map((e) => e.season_number))]
+    newSeasonNumber.value = existingSeasons.length > 0 ? Math.max(...existingSeasons) + 1 : 1
+  }
   loading.value = false
 })
+
+async function toggleMovieWatched() {
+  await titlesStore.updateTitle(props.id, {
+    status: isMovieWatched.value ? 'plan_to_watch' : 'completed',
+  })
+}
+
+async function handleDropToggle() {
+  if (!title.value) return
+  if (isDropped.value) {
+    await titlesStore.undropTitle(title.value.id)
+  } else {
+    await titlesStore.dropTitle(title.value.id)
+  }
+}
 
 async function handleAddSeason() {
   error.value = ''
@@ -85,41 +113,64 @@ function handleDeleteTitle() {
         <div class="header-info">
           <h1>{{ title.name }}</h1>
           <p v-if="title.overview" class="overview">{{ title.overview }}</p>
-          <p class="meta">{{ progress.watched }}/{{ progress.total }} episodi visti ({{ progress.percent }}%)</p>
-          <ProgressBar :value="progress.percent" :show-value="false" class="progress" />
-          <Button label="Elimina titolo" icon="pi pi-trash" severity="danger" outlined size="small" @click="handleDeleteTitle" />
+          <Tag :value="statusLabels[title.status]" class="status-tag" />
+          <template v-if="!isMovie">
+            <p class="meta">{{ progress.watched }}/{{ progress.total }} episodi visti ({{ progress.percent }}%)</p>
+            <ProgressBar :value="progress.percent" :show-value="false" class="progress" />
+          </template>
+          <div class="actions-row">
+            <Button
+              v-if="isMovie"
+              :label="isMovieWatched ? 'Segna da vedere' : 'Segna come visto'"
+              :icon="isMovieWatched ? undefined : 'pi pi-check'"
+              size="small"
+              :outlined="isMovieWatched"
+              @click="toggleMovieWatched"
+            />
+            <Button
+              :label="isDropped ? 'Riprendi' : 'Abbandona'"
+              :icon="isDropped ? 'pi pi-refresh' : 'pi pi-ban'"
+              severity="warn"
+              outlined
+              size="small"
+              @click="handleDropToggle"
+            />
+            <Button label="Elimina titolo" icon="pi pi-trash" severity="danger" outlined size="small" @click="handleDeleteTitle" />
+          </div>
         </div>
       </div>
 
-      <div class="seasons">
-        <SeasonBlock
-          v-for="[seasonNumber, seasonEpisodes] in seasons"
-          :key="seasonNumber"
-          :title-id="props.id"
-          :season-number="seasonNumber"
-          :episodes="seasonEpisodes"
-        />
-      </div>
+      <template v-if="!isMovie">
+        <div class="seasons">
+          <SeasonBlock
+            v-for="[seasonNumber, seasonEpisodes] in seasons"
+            :key="seasonNumber"
+            :title-id="props.id"
+            :season-number="seasonNumber"
+            :episodes="seasonEpisodes"
+          />
+        </div>
 
-      <Card>
-        <template #title>Aggiungi stagione</template>
-        <template #content>
-          <form class="add-season" @submit.prevent="handleAddSeason">
-            <div class="fields">
-              <label class="field">
-                <span>Numero stagione</span>
-                <InputNumber v-model="newSeasonNumber" :min="1" show-buttons button-layout="horizontal" />
-              </label>
-              <label class="field">
-                <span>Numero episodi</span>
-                <InputNumber v-model="newSeasonEpisodeCount" :min="1" show-buttons button-layout="horizontal" />
-              </label>
-            </div>
-            <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
-            <Button type="submit" label="Aggiungi" />
-          </form>
-        </template>
-      </Card>
+        <Card>
+          <template #title>Aggiungi stagione</template>
+          <template #content>
+            <form class="add-season" @submit.prevent="handleAddSeason">
+              <div class="fields">
+                <label class="field">
+                  <span>Numero stagione</span>
+                  <InputNumber v-model="newSeasonNumber" :min="1" show-buttons button-layout="horizontal" />
+                </label>
+                <label class="field">
+                  <span>Numero episodi</span>
+                  <InputNumber v-model="newSeasonEpisodeCount" :min="1" show-buttons button-layout="horizontal" />
+                </label>
+              </div>
+              <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
+              <Button type="submit" label="Aggiungi" />
+            </form>
+          </template>
+        </Card>
+      </template>
     </template>
   </div>
 </template>
@@ -171,6 +222,17 @@ function handleDeleteTitle() {
 .meta {
   color: var(--p-text-muted-color);
   margin: 0 0 0.5rem;
+}
+
+.status-tag {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+}
+
+.actions-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .progress {

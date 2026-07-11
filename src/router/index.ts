@@ -11,15 +11,53 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/register',
+      name: 'register',
+      component: () => import('../views/RegisterView.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/',
       name: 'home',
       component: () => import('../views/HomeView.vue'),
+      meta: { tab: 'home' },
+    },
+    {
+      path: '/search',
+      name: 'search',
+      component: () => import('../views/SearchView.vue'),
+      meta: { tab: 'search' },
     },
     {
       path: '/titles/:id',
       name: 'title-detail',
       component: () => import('../views/TitleDetailView.vue'),
       props: true,
+      meta: { tab: 'home' },
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../views/SettingsView.vue'),
+      meta: { tab: 'settings' },
+    },
+    {
+      path: '/settings/account',
+      name: 'settings-account',
+      component: () => import('../views/settings/AccountSettingsView.vue'),
+      meta: { tab: 'settings' },
+    },
+    {
+      path: '/settings/theme',
+      name: 'settings-theme',
+      component: () => import('../views/settings/ThemeSettingsView.vue'),
+      meta: { tab: 'settings' },
+    },
+    {
+      path: '/settings/requests',
+      name: 'settings-requests',
+      component: () => import('../views/settings/RequestsView.vue'),
+      meta: { tab: 'settings' },
     },
   ],
 })
