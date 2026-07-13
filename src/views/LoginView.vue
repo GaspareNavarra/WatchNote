@@ -1,20 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import Card from 'primevue/card'
-import InputText from 'primevue/inputtext'
-import Password from 'primevue/password'
-import Button from 'primevue/button'
+import { useI18n } from 'vue-i18n'
 import Message from 'primevue/message'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const { t } = useI18n({ useScope: 'global' })
 
 const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const showPassword = ref(false)
 
 async function handleSubmit() {
   error.value = ''
@@ -23,7 +22,7 @@ async function handleSubmit() {
     await auth.signIn(email.value, password.value)
     router.push({ name: 'home' })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Si è verificato un errore'
+    error.value = e instanceof Error ? e.message : t('auth.login.genericError')
   } finally {
     loading.value = false
   }
@@ -32,78 +31,326 @@ async function handleSubmit() {
 
 <template>
   <div class="login-page">
-    <Card class="login-card">
-      <template #title>WatchNote</template>
-      <template #subtitle>Accedi al tuo account</template>
-      <template #content>
-        <form class="form" @submit.prevent="handleSubmit">
-          <label class="field">
-            <span>Email</span>
-            <InputText v-model="email" type="email" required autocomplete="email" />
-          </label>
+    <div class="card-shell">
+      <div class="card-glow"></div>
+      <div class="card-border">
+        <div class="card-inner">
+          <div class="brand">
+            <img src="/logo.png" alt="WatchNote" class="brand-icon" />
+            <div class="brand-text">
+              <span class="brand-name">WatchNote</span>
+              <span class="brand-subtitle">{{ t('auth.login.subtitle') }}</span>
+            </div>
+          </div>
 
-          <label class="field">
-            <span>Password</span>
-            <Password
-              v-model="password"
-              :feedback="false"
-              toggle-mask
-              required
-              autocomplete="current-password"
-              :input-props="{ minlength: 6 }"
-            />
-          </label>
+          <form class="form" @submit.prevent="handleSubmit">
+            <label class="field">
+              <span class="field-label">{{ t('auth.login.email') }}</span>
+              <div class="input-row">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <input v-model="email" type="email" required autocomplete="email" class="input-el" />
+              </div>
+            </label>
 
-          <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
+            <label class="field">
+              <span class="field-label">{{ t('auth.login.password') }}</span>
+              <div class="input-row">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <input
+                  v-model="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  required
+                  autocomplete="current-password"
+                  minlength="6"
+                  class="input-el"
+                />
+                <button
+                  type="button"
+                  class="input-toggle"
+                  :aria-label="showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')"
+                  @click="showPassword = !showPassword"
+                >
+                  <svg v-if="showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.8 21.8 0 0 1 5.06-6.06M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+            </label>
 
-          <Button type="submit" label="Accedi" :loading="loading" />
+            <div class="forgot-row">
+              <a href="#" class="forgot-link" @click.prevent>{{ t('auth.login.forgotPassword') }}</a>
+            </div>
 
-          <Button
-            type="button"
-            link
-            class="toggle-link"
-            label="Non hai un account? Registrati"
-            @click="router.push({ name: 'register' })"
-          />
-        </form>
-      </template>
-    </Card>
+            <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
+
+            <button type="submit" class="submit-btn" :disabled="loading">
+              <span v-if="loading" class="spinner"></span>
+              <span v-else>{{ t('auth.login.submit') }}</span>
+            </button>
+          </form>
+
+          <p class="footer-text">
+            {{ t('auth.login.toggleLinkPrefix') }}
+            <a href="#" class="footer-link" @click.prevent="router.push({ name: 'register' })">{{
+              t('auth.login.toggleLinkAction')
+            }}</a>
+          </p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 .login-page {
   min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
-.login-card {
+.card-shell {
+  position: relative;
   width: 100%;
-  max-width: 380px;
+  max-width: 360px;
+}
+
+.card-glow {
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(
+    circle at 50% 35%,
+    color-mix(in srgb, var(--p-primary-color) 35%, transparent),
+    transparent 70%
+  );
+  filter: blur(20px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.card-border {
+  position: relative;
+  z-index: 1;
+  border-radius: 24px;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--p-primary-color) 55%, transparent) 0%,
+    transparent 100%
+  );
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.7);
+}
+
+.card-inner {
+  border-radius: 23px;
+  background: linear-gradient(180deg, var(--auth-card-from), var(--auth-card-to));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 30px 26px 26px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 26px;
+}
+
+.brand-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  display: block;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brand-name {
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.brand-subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 18px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.9rem;
+  gap: 8px;
 }
 
-.field :deep(input) {
+.field-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 50px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--surface-chip);
+  border: 1px solid var(--hairline-border);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.input-row:focus-within {
+  border-color: color-mix(in srgb, var(--p-primary-color) 85%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+}
+
+.input-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.input-el {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14.5px;
+  font-family: inherit;
+}
+
+.input-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.input-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.forgot-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.forgot-link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--p-primary-color);
+  text-decoration: none;
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--p-primary-color) 70%, white 30%),
+    color-mix(in srgb, var(--p-primary-color) 85%, white 15%)
+  );
+  color: #140f24;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 12px 28px -10px color-mix(in srgb, var(--p-primary-color) 85%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.toggle-link {
-  align-self: center;
-  font-size: 0.85rem;
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px -10px color-mix(in srgb, var(--p-primary-color) 95%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.submit-btn:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(20, 15, 36, 0.35);
+  border-top-color: #140f24;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.footer-text {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.footer-link {
+  margin-left: 4px;
+  color: var(--p-primary-color);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 380px) {
+  .brand-icon {
+    width: 40px;
+    height: 40px;
+  }
 }
 </style>

@@ -17,6 +17,12 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/register/confirm',
+      name: 'register-confirm',
+      component: () => import('../views/RegisterConfirmView.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/',
       name: 'home',
       component: () => import('../views/HomeView.vue'),
@@ -57,6 +63,12 @@ const router = createRouter({
       path: '/settings/requests',
       name: 'settings-requests',
       component: () => import('../views/settings/RequestsView.vue'),
+      meta: { tab: 'settings' },
+    },
+    {
+      path: '/settings/security',
+      name: 'settings-security',
+      component: () => import('../views/settings/SecuritySettingsView.vue'),
       meta: { tab: 'settings' },
     },
   ],

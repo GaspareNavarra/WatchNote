@@ -1,187 +1,457 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import Tabs from 'primevue/tabs'
-import TabList from 'primevue/tablist'
-import Tab from 'primevue/tab'
+import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
-import SelectButton from 'primevue/selectbutton'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
-import Tag from 'primevue/tag'
+import Avatar from 'primevue/avatar'
 import { useTitlesStore } from '../stores/titles'
+import { useProfileStore } from '../stores/profile'
 import type { TitleStatus, TitleType } from '../types/database'
-import TitlePoster from '../components/TitlePoster.vue'
+import type { Categoria, Stato, Titolo } from '../lib/titoliUi'
+import { statoColor } from '../lib/titoliUi'
+import HomeTitleCard from '../components/HomeTitleCard.vue'
 
+const router = useRouter()
 const titlesStore = useTitlesStore()
+const profileStore = useProfileStore()
+const { t } = useI18n({ useScope: 'global' })
 
-type StatusTab = 'all' | TitleStatus
+const avatarLoadError = ref(false)
+const avatarUrl = computed(() => (avatarLoadError.value ? null : profileStore.profile?.avatar_url ?? null))
 
-const query = ref('')
-const typeFilter = ref<'all' | TitleType>('all')
-const statusTab = ref<StatusTab>('all')
-
-const typeOptions: { label: string; value: 'all' | TitleType }[] = [
-  { label: 'Tutti', value: 'all' },
-  { label: 'Film', value: 'movie' },
-  { label: 'Serie', value: 'series' },
-  { label: 'Anime', value: 'anime' },
-]
-
-const statusTabs: { value: StatusTab; label: string }[] = [
-  { value: 'all', label: 'Tutti' },
-  { value: 'plan_to_watch', label: 'Da vedere' },
-  { value: 'watching', label: 'In corso' },
-  { value: 'completed', label: 'Visti' },
-  { value: 'dropped', label: 'Abbandonati' },
-]
-
-const statusSeverity: Record<TitleStatus, 'secondary' | 'info' | 'success' | 'danger'> = {
-  plan_to_watch: 'secondary',
-  watching: 'info',
-  completed: 'success',
-  dropped: 'danger',
+function goToProfile() {
+  router.push({ name: 'settings-account' })
 }
 
-const statusOrder: TitleStatus[] = ['plan_to_watch', 'watching', 'completed', 'dropped']
+function toCategoria(type: TitleType): Categoria {
+  if (type === 'movie') return 'film'
+  if (type === 'series') return 'serie'
+  return 'anime'
+}
 
-const searchFiltered = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  return titlesStore.titles.filter(
-    (t) =>
-      (typeFilter.value === 'all' || t.type === typeFilter.value) &&
-      (!q || t.name.toLowerCase().includes(q))
-  )
-})
+function toStato(status: TitleStatus): Stato {
+  if (status === 'completed') return 'visto'
+  if (status === 'watching') return 'in_corso'
+  if (status === 'dropped') return 'abbandonato'
+  return 'da_vedere'
+}
 
-const groups = computed(() => ({
-  all: searchFiltered.value,
-  plan_to_watch: searchFiltered.value.filter((t) => t.status === 'plan_to_watch'),
-  watching: searchFiltered.value.filter((t) => t.status === 'watching'),
-  completed: searchFiltered.value.filter((t) => t.status === 'completed'),
-  dropped: searchFiltered.value.filter((t) => t.status === 'dropped'),
-}))
-
-const activeTitles = computed(() => groups.value[statusTab.value])
-
-const sections = computed(() =>
-  statusOrder
-    .map((status) => ({
-      status,
-      label: statusTabs.find((t) => t.value === status)!.label,
-      items: groups.value[status],
-    }))
-    .filter((section) => section.items.length > 0)
+const titoli = computed<Titolo[]>(() =>
+  titlesStore.titles.map((t) => {
+    const categoria = toCategoria(t.type)
+    const isMovie = categoria === 'film'
+    const prog = titlesStore.progress(t.id)
+    return {
+      id: t.id,
+      titolo: t.name,
+      categoria,
+      stato: toStato(t.status),
+      episodiVisti: isMovie ? (t.status === 'completed' ? 1 : 0) : prog.watched,
+      episodiTotali: isMovie ? 1 : prog.total,
+      copertina: t.poster_url ?? undefined,
+    }
+  })
 )
 
 onMounted(() => {
   titlesStore.fetchTitles()
+  titlesStore.fetchAllEpisodes()
+  if (!profileStore.profile) profileStore.fetchProfile()
 })
+
+const query = ref('')
+const categoriaAttiva = ref<'tutti' | Categoria>('tutti')
+const statoAttivo = ref<'tutti' | Stato>('tutti')
+
+const categorieOptions = computed<{ value: 'tutti' | Categoria; label: string; icon: string }[]>(() => [
+  { value: 'tutti', label: t('home.categories.tutti'), icon: 'pi pi-th-large' },
+  { value: 'film', label: t('home.categories.film'), icon: 'pi pi-video' },
+  { value: 'serie', label: t('home.categories.serie'), icon: 'pi pi-desktop' },
+  { value: 'anime', label: t('home.categories.anime'), icon: 'pi pi-star' },
+])
+
+const statoOptions = computed<{ value: 'tutti' | Stato; label: string; dot: string }[]>(() => [
+  { value: 'tutti', label: t('home.status.tutti'), dot: 'transparent' },
+  { value: 'in_corso', label: t('home.status.in_corso'), dot: statoColor.in_corso },
+  { value: 'da_vedere', label: t('home.status.da_vedere'), dot: statoColor.da_vedere },
+  { value: 'visto', label: t('home.status.visto'), dot: statoColor.visto },
+  { value: 'abbandonato', label: t('home.status.abbandonato'), dot: statoColor.abbandonato },
+])
+
+// Ordine di priorità delle sezioni quando sono visibili tutti gli stati.
+const statoOrder: Stato[] = ['in_corso', 'da_vedere', 'visto', 'abbandonato']
+
+const stats = computed(() => ({
+  visto: titoli.value.filter((t) => t.stato === 'visto').length,
+  in_corso: titoli.value.filter((t) => t.stato === 'in_corso').length,
+  da_vedere: titoli.value.filter((t) => t.stato === 'da_vedere').length,
+  abbandonato: titoli.value.filter((t) => t.stato === 'abbandonato').length,
+}))
+
+const titoliFiltrati = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return titoli.value.filter((t) => {
+    if (categoriaAttiva.value !== 'tutti' && t.categoria !== categoriaAttiva.value) return false
+    if (statoAttivo.value !== 'tutti' && t.stato !== statoAttivo.value) return false
+    if (q && !t.titolo.toLowerCase().includes(q)) return false
+    return true
+  })
+})
+
+const sezioni = computed(() =>
+  statoOrder
+    .map((stato) => ({
+      stato,
+      label: t(`home.status.${stato}`),
+      items: titoliFiltrati.value.filter((it) => it.stato === stato),
+    }))
+    .filter((sezione) => sezione.items.length > 0)
+)
+
+function apriDettaglio(t: Titolo) {
+  router.push({ name: 'title-detail', params: { id: t.id } })
+}
 </script>
 
 <template>
-  <div class="home">
-    <div class="toolbar">
+  <div class="home-screen">
+    <header class="home-header">
+      <img src="/logo.png" alt="WatchNote" class="logo-box" />
+      <div class="header-text">
+        <h1>WatchNote</h1>
+        <p>{{ t('home.titleCount', { count: titoli.length }) }}</p>
+      </div>
+      <button type="button" class="profile-avatar-btn" @click="goToProfile">
+        <span v-if="profileStore.profile?.nickname" class="profile-nickname">{{ profileStore.profile.nickname }}</span>
+        <Avatar
+          :image="avatarUrl ?? undefined"
+          :icon="!avatarUrl ? 'pi pi-user' : undefined"
+          shape="circle"
+          @error="avatarLoadError = true"
+        />
+      </button>
+    </header>
+
+    <div class="home-content">
       <IconField class="search-field">
         <InputIcon class="pi pi-search" />
-        <InputText v-model="query" placeholder="Cerca nella libreria..." class="search-input" />
+        <InputText v-model="query" :placeholder="t('home.searchPlaceholder')" class="search-input" />
       </IconField>
-      <SelectButton
-        v-model="typeFilter"
-        :options="typeOptions"
-        option-label="label"
-        option-value="value"
-        :allow-empty="false"
-        class="type-filter"
-      />
-    </div>
 
-    <Tabs :value="statusTab" @update:value="(v) => (statusTab = v as StatusTab)">
-      <TabList>
-        <Tab v-for="tab in statusTabs" :key="tab.value" :value="tab.value">{{ tab.label }}</Tab>
-      </TabList>
-    </Tabs>
-
-    <div v-if="titlesStore.loading" class="empty">
-      <ProgressSpinner style="width: 2.5rem; height: 2.5rem" stroke-width="4" />
-    </div>
-    <Message v-else-if="titlesStore.error" severity="error" :closable="false">{{ titlesStore.error }}</Message>
-
-    <template v-else-if="statusTab === 'all'">
-      <p v-if="sections.length === 0" class="empty-text">Nessun titolo qui.</p>
-      <div v-else class="section" v-for="section in sections" :key="section.status">
-        <div class="section-heading">
-          <Tag :value="section.label" :severity="statusSeverity[section.status]" />
+      <div class="stats-grid">
+        <div class="stat-cell">
+          <span class="stat-value" :style="{ color: statoColor.visto }">{{ stats.visto }}</span>
+          <span class="stat-label">{{ t('home.stats.visto') }}</span>
         </div>
-        <div class="grid">
-          <TitlePoster v-for="title in section.items" :key="title.id" :title="title" />
+        <div class="stat-cell">
+          <span class="stat-value" :style="{ color: statoColor.in_corso }">{{ stats.in_corso }}</span>
+          <span class="stat-label">{{ t('home.stats.in_corso') }}</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-value" :style="{ color: statoColor.da_vedere }">{{ stats.da_vedere }}</span>
+          <span class="stat-label">{{ t('home.stats.da_vedere') }}</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-value" :style="{ color: statoColor.abbandonato }">{{ stats.abbandonato }}</span>
+          <span class="stat-label">{{ t('home.stats.abbandonato') }}</span>
         </div>
       </div>
-    </template>
 
-    <template v-else>
-      <p v-if="activeTitles.length === 0" class="empty-text">Nessun titolo qui.</p>
-      <div v-else class="grid">
-        <TitlePoster v-for="title in activeTitles" :key="title.id" :title="title" />
+      <div class="category-row">
+        <button
+          v-for="opt in categorieOptions"
+          :key="opt.value"
+          type="button"
+          class="category-btn"
+          :class="{ active: categoriaAttiva === opt.value }"
+          @click="categoriaAttiva = opt.value"
+        >
+          <i :class="opt.icon"></i>
+          <span>{{ opt.label }}</span>
+        </button>
       </div>
-    </template>
+
+      <div class="status-row">
+        <button
+          v-for="opt in statoOptions"
+          :key="opt.value"
+          type="button"
+          class="status-chip"
+          :class="{ active: statoAttivo === opt.value }"
+          @click="statoAttivo = opt.value"
+        >
+          <span v-if="opt.value !== 'tutti'" class="dot" :style="{ background: opt.dot }"></span>
+          <span>{{ opt.label }}</span>
+        </button>
+      </div>
+
+      <div v-if="titlesStore.loading" class="empty-state">
+        <ProgressSpinner style="width: 2.5rem; height: 2.5rem" stroke-width="4" />
+      </div>
+      <Message v-else-if="titlesStore.error" severity="error" :closable="false">{{ titlesStore.error }}</Message>
+      <div v-else-if="titoliFiltrati.length === 0" class="empty-state">
+        <i class="pi pi-inbox"></i>
+        <p>{{ t('home.empty') }}</p>
+      </div>
+
+      <div v-else-if="statoAttivo === 'tutti'" class="sections">
+        <div v-for="sezione in sezioni" :key="sezione.stato" class="section">
+          <div class="section-heading">
+            <span class="section-chip" :style="{ color: statoColor[sezione.stato], borderColor: statoColor[sezione.stato] }">
+              {{ sezione.label }}
+            </span>
+          </div>
+          <div class="cards-grid">
+            <HomeTitleCard v-for="t in sezione.items" :key="t.id" :t="t" @click="apriDettaglio(t)" />
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="cards-grid">
+        <HomeTitleCard v-for="t in titoliFiltrati" :key="t.id" :t="t" @click="apriDettaglio(t)" />
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.home {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.25rem;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.home-screen {
+  --bg-primary-text: var(--text-primary);
+  --bg-muted-text: var(--text-secondary);
+  --bg-accent: var(--p-primary-color);
+  --bg-border: var(--hairline-border);
+  --bg-chip: var(--surface-chip);
+  --bg-card: var(--surface-overlay);
+
+  position: relative;
+  min-height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--bg-primary-text);
+  background: var(--app-gradient);
 }
 
-.toolbar {
+.home-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
+  padding: calc(0.85rem + env(safe-area-inset-top)) 1.1rem 0.85rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--bg-border);
+}
+
+.logo-box {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+}
+
+.header-text h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--bg-primary-text);
+}
+
+.header-text p {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--bg-muted-text);
+}
+
+.profile-avatar-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  max-width: 45%;
+}
+
+.profile-nickname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bg-primary-text);
+}
+
+.profile-avatar-btn :deep(.p-avatar) {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  background: var(--bg-chip);
+  color: var(--bg-primary-text);
+  line-height: 0;
+}
+
+.home-content {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem 1.1rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
 }
 
 .search-field {
-  flex: 1;
-  min-width: 160px;
+  width: 100%;
 }
 
 .search-input {
   width: 100%;
+  background: var(--bg-chip);
+  border: 1px solid var(--bg-border);
+  color: var(--bg-primary-text);
 }
 
-.type-filter :deep(.p-togglebutton) {
-  padding-inline: 0.6rem;
+.search-input::placeholder {
+  color: var(--bg-muted-text);
 }
 
-.empty {
-  display: flex;
-  justify-content: center;
-  padding: 2rem 0;
-}
-
-.empty-text {
-  color: var(--p-text-muted-color);
-  text-align: center;
-  padding: 2rem 0;
-}
-
-.grid {
+.stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 0.85rem;
-  margin-top: 1rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.stat-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem 0.25rem;
+  border-radius: 12px;
+  background: var(--bg-chip);
+  border: 1px solid var(--bg-border);
+}
+
+.stat-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.68rem;
+  color: var(--bg-muted-text);
+  text-align: center;
+}
+
+.category-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.category-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.55rem 0.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--bg-border);
+  background: var(--bg-chip);
+  color: var(--bg-muted-text);
+  font-size: 0.72rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.category-btn i {
+  font-size: 1rem;
+}
+
+.category-btn.active {
+  background: var(--bg-accent);
+  border-color: var(--bg-accent);
+  color: #fff;
+}
+
+.status-row {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.status-row::-webkit-scrollbar {
+  display: none;
+}
+
+.status-chip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--bg-border);
+  background: var(--bg-chip);
+  color: var(--bg-muted-text);
+  font-size: 0.75rem;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.status-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.status-chip.active {
+  background: color-mix(in srgb, var(--bg-primary-text) 14%, transparent);
+  color: var(--bg-primary-text);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 3rem 0;
+  color: var(--bg-muted-text);
+}
+
+.empty-state i {
+  font-size: 2rem;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .section {
-  margin-top: 2rem;
-}
-
-.section:first-child {
-  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .section-heading {
@@ -189,8 +459,20 @@ onMounted(() => {
   justify-content: center;
 }
 
-.section-heading :deep(.p-tag) {
-  font-size: 0.8rem;
-  padding: 0.3rem 0.9rem;
+.section-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid;
+  background: var(--bg-chip);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
 }
 </style>

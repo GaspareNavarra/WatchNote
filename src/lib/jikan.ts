@@ -3,6 +3,7 @@ const JIKAN_BASE_URL = 'https://api.jikan.moe/v4'
 export type JikanSearchResult = {
   id: number
   title: string
+  titleEnglish: string | null
   synopsis: string
   imageUrl: string | null
   year: number | null
@@ -17,6 +18,7 @@ export type JikanEpisodeSummary = {
 type JikanRawAnime = {
   mal_id: number
   title: string
+  title_english: string | null
   synopsis: string | null
   episodes: number | null
   year: number | null
@@ -123,6 +125,7 @@ function mapJikanAnime(a: JikanRawAnime): JikanSearchResult {
   return {
     id: a.mal_id,
     title: a.title,
+    titleEnglish: a.title_english,
     synopsis: a.synopsis ?? '',
     imageUrl: a.images.jpg.large_image_url ?? a.images.jpg.image_url,
     year: a.year,

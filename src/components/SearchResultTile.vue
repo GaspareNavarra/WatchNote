@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import { useTitlesStore } from '../stores/titles'
 import { useAddToLibrary } from '../composables/useAddToLibrary'
@@ -7,6 +8,7 @@ import type { UnifiedResult } from '../lib/media'
 
 const props = defineProps<{ result: UnifiedResult }>()
 
+const { t } = useI18n({ useScope: 'global' })
 const titlesStore = useTitlesStore()
 const { importingId, handleImport } = useAddToLibrary()
 
@@ -33,17 +35,17 @@ const isAlreadyAdded = computed(() =>
         <strong>{{ result.title }}</strong>
         <span v-if="result.year" class="year">({{ result.year }})</span>
       </div>
-      <p class="overview">{{ result.overview || 'Nessuna descrizione disponibile.' }}</p>
+      <p class="overview">{{ result.overview || t('searchResultTile.noOverview') }}</p>
       <Button
         v-if="isAlreadyAdded"
-        label="Già in libreria"
+        :label="t('searchResultTile.alreadyAdded')"
         size="small"
         disabled
         outlined
       />
       <Button
         v-else
-        label="Aggiungi"
+        :label="t('searchResultTile.add')"
         icon="pi pi-plus"
         size="small"
         :loading="importingId === result.id"

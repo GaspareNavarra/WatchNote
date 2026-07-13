@@ -1,4 +1,11 @@
+import { useLocaleStore } from '../stores/locale'
+
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY as string
+
+const TMDB_LANGUAGE_BY_LOCALE: Record<string, string> = {
+  it: 'it-IT',
+  en: 'en-US',
+}
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500'
 
@@ -42,7 +49,8 @@ async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): 
   assertApiKey()
   const url = new URL(`${TMDB_BASE_URL}${path}`)
   url.searchParams.set('api_key', TMDB_API_KEY)
-  url.searchParams.set('language', 'it-IT')
+  const locale = useLocaleStore().locale
+  url.searchParams.set('language', TMDB_LANGUAGE_BY_LOCALE[locale] ?? 'it-IT')
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value)
   }

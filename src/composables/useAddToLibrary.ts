@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useTitlesStore } from '../stores/titles'
 import { getTvDetails, getSeasonEpisodes } from '../lib/tmdb'
@@ -8,6 +9,7 @@ import type { UnifiedResult } from '../lib/media'
 export function useAddToLibrary() {
   const titlesStore = useTitlesStore()
   const toast = useToast()
+  const { t } = useI18n({ useScope: 'global' })
   const importingId = ref<number | null>(null)
 
   async function handleImport(result: UnifiedResult) {
@@ -41,13 +43,18 @@ export function useAddToLibrary() {
         )
       }
 
-      toast.add({ severity: 'success', summary: 'Aggiunto', detail: `"${result.title}" aggiunto alla libreria`, life: 3000 })
+      toast.add({
+        severity: 'success',
+        summary: t('addToLibrary.addedSummary'),
+        detail: t('addToLibrary.addedDetail', { title: result.title }),
+        life: 3000,
+      })
       return newTitle
     } catch (e) {
       toast.add({
         severity: 'error',
-        summary: 'Errore',
-        detail: e instanceof Error ? e.message : "Errore durante l'importazione",
+        summary: t('addToLibrary.errorSummary'),
+        detail: e instanceof Error ? e.message : t('addToLibrary.errorDetailFallback'),
         life: 5000,
       })
       throw e

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useConfirm } from 'primevue/useconfirm'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
@@ -17,6 +18,7 @@ const props = defineProps<{ id: string }>()
 const titlesStore = useTitlesStore()
 const router = useRouter()
 const confirm = useConfirm()
+const { t } = useI18n({ useScope: 'global' })
 
 const loading = ref(true)
 const newSeasonNumber = ref(1)
@@ -30,12 +32,7 @@ const isMovie = computed(() => title.value?.type === 'movie')
 const isDropped = computed(() => title.value?.status === 'dropped')
 const isMovieWatched = computed(() => title.value?.status === 'completed')
 
-const statusLabels: Record<string, string> = {
-  plan_to_watch: 'Da vedere',
-  watching: 'In corso',
-  completed: 'Completato',
-  dropped: 'Abbandonato',
-}
+const statusLabel = computed(() => (title.value ? t(`titleDetail.status.${title.value.status}`) : ''))
 
 const seasons = computed(() => {
   const map = new Map<number, typeof episodes.value>()
@@ -79,18 +76,18 @@ async function handleAddSeason() {
     await titlesStore.addSeason(props.id, newSeasonNumber.value, newSeasonEpisodeCount.value)
     newSeasonNumber.value += 1
   } catch (e) {
-    error.value = e instanceof Error ? e.message : "Errore durante l'aggiunta della stagione"
+    error.value = e instanceof Error ? e.message : t('titleDetail.addSeason.error')
   }
 }
 
 function handleDeleteTitle() {
   if (!title.value) return
   confirm.require({
-    message: `Eliminare "${title.value.name}" e tutti i suoi episodi?`,
-    header: 'Conferma eliminazione',
+    message: t('titleDetail.deleteConfirm.message', { name: title.value.name }),
+    header: t('titleDetail.deleteConfirm.header'),
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Elimina',
-    rejectLabel: 'Annulla',
+    acceptLabel: t('titleDetail.deleteConfirm.accept'),
+    rejectLabel: t('titleDetail.deleteConfirm.reject'),
     acceptProps: { severity: 'danger' },
     accept: async () => {
       await titlesStore.deleteTitle(props.id)
@@ -102,10 +99,10 @@ function handleDeleteTitle() {
 
 <template>
   <div class="detail">
-    <RouterLink to="/" class="back">← Torna alla lista</RouterLink>
+    <RouterLink to="/" class="back">← {{ t('titleDetail.backToList') }}</RouterLink>
 
     <div v-if="loading" class="loading"><ProgressSpinner style="width: 2.5rem; height: 2.5rem" /></div>
-    <p v-else-if="!title">Titolo non trovato.</p>
+    <p v-else-if="!title">{{ t('titleDetail.notFound') }}</p>
 
     <template v-else>
       <div class="header">
@@ -113,29 +110,38 @@ function handleDeleteTitle() {
         <div class="header-info">
           <h1>{{ title.name }}</h1>
           <p v-if="title.overview" class="overview">{{ title.overview }}</p>
-          <Tag :value="statusLabels[title.status]" class="status-tag" />
+          <Tag :value="statusLabel" class="status-tag" />
           <template v-if="!isMovie">
-            <p class="meta">{{ progress.watched }}/{{ progress.total }} episodi visti ({{ progress.percent }}%)</p>
+            <p class="meta">
+              {{ t('titleDetail.progress', { watched: progress.watched, total: progress.total, percent: progress.percent }) }}
+            </p>
             <ProgressBar :value="progress.percent" :show-value="false" class="progress" />
           </template>
           <div class="actions-row">
             <Button
               v-if="isMovie"
-              :label="isMovieWatched ? 'Segna da vedere' : 'Segna come visto'"
+              :label="isMovieWatched ? t('titleDetail.actions.markUnwatched') : t('titleDetail.actions.markWatched')"
               :icon="isMovieWatched ? undefined : 'pi pi-check'"
               size="small"
               :outlined="isMovieWatched"
               @click="toggleMovieWatched"
             />
             <Button
-              :label="isDropped ? 'Riprendi' : 'Abbandona'"
+              :label="isDropped ? t('titleDetail.actions.resume') : t('titleDetail.actions.drop')"
               :icon="isDropped ? 'pi pi-refresh' : 'pi pi-ban'"
               severity="warn"
               outlined
               size="small"
               @click="handleDropToggle"
             />
-            <Button label="Elimina titolo" icon="pi pi-trash" severity="danger" outlined size="small" @click="handleDeleteTitle" />
+            <Button
+              :label="t('titleDetail.actions.deleteTitle')"
+              icon="pi pi-trash"
+              severity="danger"
+              outlined
+              size="small"
+              @click="handleDeleteTitle"
+            />
           </div>
         </div>
       </div>
@@ -152,21 +158,21 @@ function handleDeleteTitle() {
         </div>
 
         <Card>
-          <template #title>Aggiungi stagione</template>
+          <template #title>{{ t('titleDetail.addSeason.title') }}</template>
           <template #content>
             <form class="add-season" @submit.prevent="handleAddSeason">
               <div class="fields">
                 <label class="field">
-                  <span>Numero stagione</span>
+                  <span>{{ t('titleDetail.addSeason.seasonNumber') }}</span>
                   <InputNumber v-model="newSeasonNumber" :min="1" show-buttons button-layout="horizontal" />
                 </label>
                 <label class="field">
-                  <span>Numero episodi</span>
+                  <span>{{ t('titleDetail.addSeason.episodeCount') }}</span>
                   <InputNumber v-model="newSeasonEpisodeCount" :min="1" show-buttons button-layout="horizontal" />
                 </label>
               </div>
               <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
-              <Button type="submit" label="Aggiungi" />
+              <Button type="submit" :label="t('titleDetail.addSeason.submit')" />
             </form>
           </template>
         </Card>

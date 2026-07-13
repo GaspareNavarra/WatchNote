@@ -3,7 +3,7 @@ import { updatePrimaryPalette } from '@primeuix/themes'
 import type { PaletteDesignToken } from '@primeuix/themes/types'
 
 export type ThemeMode = 'light' | 'dark'
-export type ThemeVariant = 'primary' | 'secondary' | 'tertiary'
+export type ThemeVariant = 'primary' | 'secondary' | 'nebula'
 
 const STORAGE_KEY = 'watchnote-theme'
 
@@ -37,26 +37,28 @@ const SECONDARY_PALETTE: PaletteDesignToken = {
   950: '#031a33',
 }
 
-// Viola
-const TERTIARY_PALETTE: PaletteDesignToken = {
-  50: '#faf5ff',
-  100: '#f3e8ff',
-  200: '#e9d5ff',
-  300: '#d8b4fe',
-  400: '#c084fc',
-  500: '#a855f7',
-  600: '#9333ea',
-  700: '#7e22ce',
-  800: '#6b21a8',
-  900: '#581c87',
-  950: '#3b0764',
+// Nebula: viola notturno (stessa palette usata nella Home)
+const NEBULA_PALETTE: PaletteDesignToken = {
+  50: '#f5f3ff',
+  100: '#ede9fe',
+  200: '#ddd6fe',
+  300: '#c4b5fd',
+  400: '#a78bfa',
+  500: '#8b5cf6',
+  600: '#7c3aed',
+  700: '#6d28d9',
+  800: '#5b21b6',
+  900: '#4c1d95',
+  950: '#2e1065',
 }
 
 const PALETTES: Record<ThemeVariant, PaletteDesignToken> = {
   primary: PRIMARY_PALETTE,
   secondary: SECONDARY_PALETTE,
-  tertiary: TERTIARY_PALETTE,
+  nebula: NEBULA_PALETTE,
 }
+
+const VALID_VARIANTS: ThemeVariant[] = ['primary', 'secondary', 'nebula']
 
 function loadInitial(): { mode: ThemeMode; variant: ThemeVariant } {
   try {
@@ -65,7 +67,7 @@ function loadInitial(): { mode: ThemeMode; variant: ThemeVariant } {
       const parsed = JSON.parse(raw)
       if (
         (parsed.mode === 'light' || parsed.mode === 'dark') &&
-        (parsed.variant === 'primary' || parsed.variant === 'secondary' || parsed.variant === 'tertiary')
+        VALID_VARIANTS.includes(parsed.variant)
       ) {
         return parsed
       }
@@ -73,7 +75,7 @@ function loadInitial(): { mode: ThemeMode; variant: ThemeVariant } {
   } catch {
     // ignore malformed storage
   }
-  return { mode: 'dark', variant: 'tertiary' }
+  return { mode: 'dark', variant: 'nebula' }
 }
 
 export const useThemeStore = defineStore('theme', {

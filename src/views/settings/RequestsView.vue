@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
@@ -10,17 +11,18 @@ import { useFeatureRequestsStore } from '../../stores/featureRequests'
 
 const store = useFeatureRequestsStore()
 const toast = useToast()
+const { t, locale } = useI18n({ useScope: 'global' })
 
 const title = ref('')
 const description = ref('')
 const submitting = ref(false)
 
-const statusLabels: Record<string, string> = {
-  pending: 'In attesa',
-  in_review: 'In revisione',
-  done: 'Fatto',
-  rejected: 'Rifiutata',
-}
+const statusLabels = computed<Record<string, string>>(() => ({
+  pending: t('settings.requests.status.pending'),
+  in_review: t('settings.requests.status.in_review'),
+  done: t('settings.requests.status.done'),
+  rejected: t('settings.requests.status.rejected'),
+}))
 
 const statusSeverity: Record<string, 'secondary' | 'info' | 'success' | 'danger'> = {
   pending: 'secondary',
@@ -40,12 +42,17 @@ async function handleSubmit() {
     await store.createRequest(title.value.trim(), description.value.trim())
     title.value = ''
     description.value = ''
-    toast.add({ severity: 'success', summary: 'Inviata', detail: 'Richiesta inviata, grazie!', life: 3000 })
+    toast.add({
+      severity: 'success',
+      summary: t('settings.requests.toast.successSummary'),
+      detail: t('settings.requests.toast.successDetail'),
+      life: 3000,
+    })
   } catch (e) {
     toast.add({
       severity: 'error',
-      summary: 'Errore',
-      detail: e instanceof Error ? e.message : "Errore durante l'invio",
+      summary: t('settings.requests.toast.errorSummary'),
+      detail: e instanceof Error ? e.message : t('settings.requests.toast.errorDetailFallback'),
       life: 5000,
     })
   } finally {
@@ -54,28 +61,32 @@ async function handleSubmit() {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString(locale.value === 'it' ? 'it-IT' : 'en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 </script>
 
 <template>
   <div class="page">
-    <RouterLink :to="{ name: 'settings' }" class="back">← Impostazioni</RouterLink>
-    <h1>Richieste</h1>
+    <RouterLink :to="{ name: 'settings' }" class="back">← {{ t('settings.title') }}</RouterLink>
+    <h1>{{ t('settings.requests.title') }}</h1>
     <p class="hint">
-      Proponi una funzionalità o segnala qualcosa: titolo + descrizione, max 3 richieste al giorno.
+      {{ t('settings.requests.hint') }}
     </p>
 
     <form class="form" @submit.prevent="handleSubmit">
-      <InputText v-model="title" placeholder="Titolo" required />
-      <Textarea v-model="description" placeholder="Descrizione (opzionale)" rows="3" autoResize />
+      <InputText v-model="title" :placeholder="t('settings.requests.titlePlaceholder')" required />
+      <Textarea v-model="description" :placeholder="t('settings.requests.descriptionPlaceholder')" rows="3" autoResize />
       <Message v-if="store.remainingToday === 0" severity="warn" :closable="false">
-        Hai raggiunto il limite giornaliero. Torna domani.
+        {{ t('settings.requests.limitReached') }}
       </Message>
-      <p v-else class="remaining">Ti restano {{ store.remainingToday }} richieste oggi</p>
+      <p v-else class="remaining">{{ t('settings.requests.remaining', { count: store.remainingToday }) }}</p>
       <Button
         type="submit"
-        label="Invia"
+        :label="t('settings.requests.submit')"
         icon="pi pi-send"
         :loading="submitting"
         :disabled="!title.trim() || store.remainingToday === 0"
@@ -83,7 +94,7 @@ function formatDate(iso: string) {
     </form>
 
     <div v-if="store.requests.length > 0" class="history">
-      <h3>Le tue richieste</h3>
+      <h3>{{ t('settings.requests.history') }}</h3>
       <ul class="history-list">
         <li v-for="r in store.requests" :key="r.id" class="history-item">
           <div class="history-header">

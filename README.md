@@ -4,7 +4,7 @@ App Vue 3 + TypeScript + Capacitor per tenere traccia di film, serie TV e anime 
 
 ## Setup
 
-1. **Database**: apri il progetto Supabase, vai su *SQL Editor* ed esegui il contenuto di [`supabase/schema.sql`](supabase/schema.sql). Crea le tabelle `titles` ed `episodes` con le relative policy RLS.
+1. **Database**: apri il progetto Supabase, vai su *SQL Editor* ed esegui il contenuto di [`supabase/schema.sql`](supabase/schema.sql). Crea le tabelle `titles`, `episodes` e `profiles` con le relative policy RLS, oltre al bucket storage `avatars` per le foto profilo. Se il database esiste già, riesegui semplicemente il file: è idempotente e aggiunge solo le parti mancanti.
 2. **Variabili d'ambiente**: il file `.env` contiene già `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Se cambi progetto Supabase, aggiorna questi valori (vedi `.env.example` come riferimento).
 3. **Autenticazione**: assicurati che in Supabase, sotto *Authentication > Providers*, sia abilitato "Email" (con o senza conferma email a seconda delle tue preferenze).
 
