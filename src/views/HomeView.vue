@@ -230,7 +230,7 @@ function apriDettaglio(t: Titolo) {
   --bg-card: var(--surface-overlay);
 
   position: relative;
-  min-height: 100%;
+  min-height: 100dvh;
   font-family: 'Inter', system-ui, sans-serif;
   color: var(--bg-primary-text);
   background: var(--app-gradient);

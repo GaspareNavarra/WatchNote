@@ -13,6 +13,7 @@ import { useFeatureRequestsStore } from '../stores/featureRequests'
 import { useNotificationsStore } from '../stores/notifications'
 import { useLocaleStore } from '../stores/locale'
 import { useAuthStore } from '../stores/auth'
+import { useProfileStore } from '../stores/profile'
 import { getAppVersion } from '../lib/appInfo'
 import type { AppLocale } from '../i18n'
 
@@ -25,6 +26,7 @@ const featureRequests = useFeatureRequestsStore()
 const notifications = useNotificationsStore()
 const locale = useLocaleStore()
 const auth = useAuthStore()
+const profileStore = useProfileStore()
 
 const appVersion = ref('')
 const languageDialogVisible = ref(false)
@@ -42,6 +44,9 @@ onMounted(async () => {
   if (featureRequests.requests.length === 0) {
     featureRequests.fetchRequests()
   }
+  if (!profileStore.profile) {
+    await profileStore.fetchProfile()
+  }
   if (!notifications.ready) {
     await notifications.init()
   }
@@ -58,6 +63,10 @@ function goToTheme() {
 
 function goToRequests() {
   router.push({ name: 'settings-requests' })
+}
+
+function goToTickets() {
+  router.push({ name: 'settings-tickets' })
 }
 
 function goToSecurity() {
@@ -199,6 +208,33 @@ async function selectLanguage(value: AppLocale) {
         </SettingsListItem>
 
         <SettingsListItem
+          v-if="profileStore.isAdmin"
+          :title="t('settings.tickets.title')"
+          :subtitle="t('settings.tickets.subtitle')"
+          @click="goToTickets"
+        >
+          <template #icon>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"
+              ></path>
+              <path d="M13 5v2"></path>
+              <path d="M13 11v2"></path>
+              <path d="M13 17v2"></path>
+            </svg>
+          </template>
+        </SettingsListItem>
+
+        <SettingsListItem
           :title="t('settings.security.title')"
           :subtitle="t('settings.security.subtitle')"
           @click="goToSecurity"
@@ -334,7 +370,7 @@ async function selectLanguage(value: AppLocale) {
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 .settings-screen {
-  min-height: 100%;
+  min-height: 100dvh;
   font-family: 'Inter', system-ui, sans-serif;
   color: var(--text-primary);
   background: var(--app-gradient);

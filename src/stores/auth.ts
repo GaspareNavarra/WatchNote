@@ -27,13 +27,22 @@ export const useAuthStore = defineStore('auth', {
 
     async signIn(email: string, password: string) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
+      if (error) {
+        if (error.message === 'Invalid login credentials') {
+          throw new Error(i18n.global.t('auth.login.invalidCredentials'))
+        }
+        throw error
+      }
       this.session = data.session
       this.user = data.user
     },
 
-    async signUp(email: string, password: string) {
-      const { data, error } = await supabase.auth.signUp({ email, password })
+    async signUp(email: string, password: string, nickname: string) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { nickname } },
+      })
       if (error) throw error
       // When both "Confirm email" and "Confirm phone" are enabled in Supabase, signing up with an
       // already-registered (and confirmed) email returns a fake success with no identities, instead

@@ -51,7 +51,14 @@ async function handleSubmit() {
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-                <input v-model="email" type="email" required autocomplete="email" class="input-el" />
+                <input
+                  v-model="email"
+                  type="email"
+                  required
+                  autocomplete="email"
+                  :placeholder="t('auth.login.emailPlaceholder')"
+                  class="input-el"
+                />
               </div>
             </label>
 
@@ -68,6 +75,7 @@ async function handleSubmit() {
                   required
                   autocomplete="current-password"
                   minlength="6"
+                  :placeholder="t('auth.login.passwordPlaceholder')"
                   class="input-el"
                 />
                 <button

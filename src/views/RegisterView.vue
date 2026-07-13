@@ -1,28 +1,71 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Message from 'primevue/message'
 import { useAuthStore } from '../stores/auth'
+import { supabase } from '../lib/supabase'
 
 const auth = useAuthStore()
 const router = useRouter()
 const { t } = useI18n({ useScope: 'global' })
 
+const NICKNAME_PATTERN = /^[a-zA-Z0-9_.]{3,20}$/
+
 const email = ref('')
+const nickname = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+const nicknameStatus = ref<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
 
 const passwordsMismatch = computed(
   () => confirmPassword.value.length > 0 && password.value !== confirmPassword.value
 )
 
+let nicknameDebounce: ReturnType<typeof setTimeout> | undefined
+let nicknameCheckToken = 0
+
+async function checkNicknameAvailability(value: string) {
+  const token = ++nicknameCheckToken
+  const { data, error: rpcError } = await supabase.rpc('nickname_available', { p_nickname: value })
+  if (token !== nicknameCheckToken) return
+  if (rpcError) {
+    nicknameStatus.value = 'idle'
+    return
+  }
+  nicknameStatus.value = data ? 'available' : 'taken'
+}
+
+watch(nickname, (value) => {
+  const trimmed = value.trim()
+  nicknameCheckToken++
+  if (nicknameDebounce) clearTimeout(nicknameDebounce)
+
+  if (!trimmed) {
+    nicknameStatus.value = 'idle'
+    return
+  }
+  if (!NICKNAME_PATTERN.test(trimmed)) {
+    nicknameStatus.value = 'invalid'
+    return
+  }
+  nicknameStatus.value = 'checking'
+  nicknameDebounce = setTimeout(() => checkNicknameAvailability(trimmed), 500)
+})
+
 async function handleSubmit() {
   error.value = ''
+
+  const trimmedNickname = nickname.value.trim()
+  if (!NICKNAME_PATTERN.test(trimmedNickname)) {
+    nicknameStatus.value = 'invalid'
+    error.value = t('auth.register.nicknameInvalid')
+    return
+  }
 
   if (password.value !== confirmPassword.value) {
     error.value = t('auth.register.passwordMismatch')
@@ -31,7 +74,17 @@ async function handleSubmit() {
 
   loading.value = true
   try {
-    await auth.signUp(email.value, password.value)
+    const { data: available, error: rpcError } = await supabase.rpc('nickname_available', {
+      p_nickname: trimmedNickname,
+    })
+    if (rpcError) throw rpcError
+    if (!available) {
+      nicknameStatus.value = 'taken'
+      error.value = t('auth.register.nicknameTaken')
+      return
+    }
+
+    await auth.signUp(email.value, password.value, trimmedNickname)
     if (!auth.session) {
       router.push({ name: 'register-confirm' })
     } else {
@@ -67,8 +120,56 @@ async function handleSubmit() {
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-                <input v-model="email" type="email" required autocomplete="email" class="input-el" />
+                <input
+                  v-model="email"
+                  type="email"
+                  required
+                  autocomplete="email"
+                  :placeholder="t('auth.register.emailPlaceholder')"
+                  class="input-el"
+                />
               </div>
+            </label>
+
+            <label class="field">
+              <span class="field-label">{{ t('auth.register.nickname') }}</span>
+              <div
+                class="input-row"
+                :class="{
+                  'input-row-invalid': nicknameStatus === 'taken' || nicknameStatus === 'invalid',
+                  'input-row-valid': nicknameStatus === 'available',
+                }"
+              >
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <input
+                  v-model="nickname"
+                  type="text"
+                  required
+                  autocomplete="username"
+                  minlength="3"
+                  maxlength="20"
+                  :placeholder="t('auth.register.nicknamePlaceholder')"
+                  class="input-el"
+                />
+                <svg
+                  v-if="nicknameStatus === 'available'"
+                  class="input-check"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <small v-if="nicknameStatus === 'taken'" class="mismatch">{{ t('auth.register.nicknameTaken') }}</small>
+              <small v-else-if="nicknameStatus === 'invalid'" class="mismatch">{{ t('auth.register.nicknameInvalid') }}</small>
+              <small v-else-if="nicknameStatus === 'checking'" class="hint">{{ t('common.loading') }}</small>
             </label>
 
             <label class="field">
@@ -84,6 +185,7 @@ async function handleSubmit() {
                   required
                   autocomplete="new-password"
                   minlength="6"
+                  :placeholder="t('auth.register.passwordPlaceholder')"
                   class="input-el"
                 />
                 <button
@@ -117,6 +219,7 @@ async function handleSubmit() {
                   required
                   autocomplete="new-password"
                   minlength="6"
+                  :placeholder="t('auth.register.confirmPasswordPlaceholder')"
                   class="input-el"
                 />
                 <button
@@ -286,11 +389,22 @@ async function handleSubmit() {
   border-color: color-mix(in srgb, var(--p-red-500, #ef4444) 70%, transparent);
 }
 
+.input-row-valid {
+  border-color: color-mix(in srgb, var(--p-green-500, #22c55e) 70%, transparent);
+}
+
 .input-icon {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
   color: var(--text-muted);
+}
+
+.input-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--p-green-500, #22c55e);
 }
 
 .input-el {
@@ -324,6 +438,11 @@ async function handleSubmit() {
 
 .mismatch {
   color: var(--p-red-500, #ef4444);
+  font-size: 12px;
+}
+
+.hint {
+  color: var(--text-muted);
   font-size: 12px;
 }
 

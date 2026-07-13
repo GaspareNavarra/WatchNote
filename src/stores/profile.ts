@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { supabase } from '../lib/supabase'
 import type { ProfileRow } from '../types/database'
 import { useAuthStore } from './auth'
+import { i18n } from '../i18n'
 
 const AVATAR_BUCKET = 'avatars'
 
@@ -12,6 +13,9 @@ export const useProfileStore = defineStore('profile', {
     uploading: false,
     error: null as string | null,
   }),
+  getters: {
+    isAdmin: (state) => state.profile?.is_admin ?? false,
+  },
   actions: {
     async fetchProfile() {
       const auth = useAuthStore()
@@ -54,7 +58,12 @@ export const useProfileStore = defineStore('profile', {
         .eq('id', auth.user.id)
         .select()
         .single()
-      if (error) throw error
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error(i18n.global.t('settings.account.nicknameTaken'))
+        }
+        throw error
+      }
       this.profile = data
       return data
     },

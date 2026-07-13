@@ -34,11 +34,12 @@ export type ProfileRow = {
   nickname: string | null
   bio: string | null
   avatar_url: string | null
+  is_admin: boolean
   created_at: string
   updated_at: string
 }
 
-export type FeatureRequestStatus = 'pending' | 'in_review' | 'done' | 'rejected'
+export type FeatureRequestStatus = 'pending' | 'in_review' | 'done' | 'rejected' | 'deleted'
 
 export type FeatureRequestRow = {
   id: string
@@ -82,6 +83,11 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      nickname_available: {
+        Args: { p_nickname: string }
+        Returns: boolean
+      }
+    }
   }
 }

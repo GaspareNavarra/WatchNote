@@ -23,6 +23,7 @@ const statusLabels = computed<Record<string, string>>(() => ({
   in_review: t('settings.requests.status.in_review'),
   done: t('settings.requests.status.done'),
   rejected: t('settings.requests.status.rejected'),
+  deleted: t('settings.requests.status.deleted'),
 }))
 
 const statusSeverity: Record<string, 'secondary' | 'info' | 'success' | 'danger'> = {
@@ -30,6 +31,7 @@ const statusSeverity: Record<string, 'secondary' | 'info' | 'success' | 'danger'
   in_review: 'info',
   done: 'success',
   rejected: 'danger',
+  deleted: 'danger',
 }
 
 onMounted(() => {
@@ -103,6 +105,9 @@ function formatDate(iso: string) {
             <Tag :value="statusLabels[r.status]" :severity="statusSeverity[r.status]" />
           </div>
           <p v-if="r.description" class="history-desc">{{ r.description }}</p>
+          <Message v-if="r.status === 'deleted'" severity="warn" :closable="false" class="deleted-notice">
+            {{ t('settings.requests.deletedNotice') }}
+          </Message>
           <span class="history-date">{{ formatDate(r.created_at) }}</span>
         </li>
       </ul>
@@ -168,6 +173,10 @@ function formatDate(iso: string) {
   font-size: 0.85rem;
   color: var(--p-text-muted-color);
   margin: 0 0 0.3rem;
+}
+
+.deleted-notice {
+  margin: 0 0 0.4rem;
 }
 
 .history-date {

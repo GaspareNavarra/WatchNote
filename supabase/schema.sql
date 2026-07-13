@@ -174,10 +174,23 @@ create table if not exists public.feature_requests (
   title text not null,
   description text,
   status text not null default 'pending'
-    check (status in ('pending', 'in_review', 'done', 'rejected')),
+    check (status in ('pending', 'in_review', 'done', 'rejected', 'deleted')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Safe to re-run: widen the status check to include 'deleted' (admin soft-delete)
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint where conname = 'feature_requests_status_check'
+  ) then
+    alter table public.feature_requests drop constraint feature_requests_status_check;
+  end if;
+  alter table public.feature_requests
+    add constraint feature_requests_status_check
+    check (status in ('pending', 'in_review', 'done', 'rejected', 'deleted'));
+end $$;
 
 create index if not exists feature_requests_user_id_idx on public.feature_requests (user_id);
 
@@ -225,6 +238,9 @@ create policy "Feature requests are insertable by owner"
   on public.feature_requests for insert
   with check (auth.uid() = user_id);
 
+-- admin policies for feature_requests (select/update) are created further down,
+-- after public.is_admin() is defined in the profiles section
+
 -- ============================================================
 -- Profiles (nickname, bio, avatar) + avatar storage
 -- ============================================================
@@ -234,9 +250,28 @@ create table if not exists public.profiles (
   nickname text,
   bio text,
   avatar_url text,
+  is_admin boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Safe to re-run on an already-created database:
+alter table public.profiles add column if not exists is_admin boolean not null default false;
+
+-- nicknames must be unique (case-insensitive)
+create unique index if not exists profiles_nickname_unique_idx
+  on public.profiles (lower(nickname))
+  where nickname is not null;
+
+-- security definer helper so RLS policies can check admin status without recursing
+create or replace function public.is_admin(p_user_id uuid default auth.uid())
+returns boolean
+language sql
+security definer set search_path = public
+stable
+as $$
+  select coalesce((select is_admin from public.profiles where id = p_user_id), false);
+$$;
 
 alter table public.profiles enable row level security;
 
@@ -256,6 +291,22 @@ create policy "Profiles are updatable by owner"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
+drop policy if exists "Profiles are viewable by admins" on public.profiles;
+create policy "Profiles are viewable by admins"
+  on public.profiles for select
+  using (public.is_admin());
+
+drop policy if exists "Feature requests are viewable by admins" on public.feature_requests;
+create policy "Feature requests are viewable by admins"
+  on public.feature_requests for select
+  using (public.is_admin());
+
+drop policy if exists "Feature requests are updatable by admins" on public.feature_requests;
+create policy "Feature requests are updatable by admins"
+  on public.feature_requests for update
+  using (public.is_admin())
+  with check (public.is_admin());
+
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
   before update on public.profiles
@@ -263,14 +314,19 @@ create trigger profiles_set_updated_at
   execute function public.set_updated_at();
 
 -- auto-create a profile row for new signups
+-- uses the nickname chosen at sign-up (passed as user metadata) when available,
+-- falling back to the email prefix
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  meta_nickname text;
 begin
+  meta_nickname := nullif(trim(new.raw_user_meta_data ->> 'nickname'), '');
   insert into public.profiles (id, nickname)
-  values (new.id, split_part(new.email, '@', 1))
+  values (new.id, coalesce(meta_nickname, split_part(new.email, '@', 1)))
   on conflict (id) do nothing;
   return new;
 end;
@@ -282,10 +338,31 @@ create trigger on_auth_user_created
   for each row
   execute function public.handle_new_user();
 
+-- lets unauthenticated clients check nickname availability (e.g. during sign-up)
+-- without exposing the rest of the profiles table
+create or replace function public.nickname_available(p_nickname text)
+returns boolean
+language sql
+security definer set search_path = public
+stable
+as $$
+  select not exists (
+    select 1 from public.profiles
+    where lower(nickname) = lower(p_nickname)
+  );
+$$;
+
+grant execute on function public.nickname_available(text) to anon, authenticated;
+
 -- backfill for accounts created before this trigger existed
 insert into public.profiles (id, nickname)
 select id, split_part(email, '@', 1) from auth.users
 on conflict (id) do nothing;
+
+-- grant admin access to the app owner
+update public.profiles
+set is_admin = true
+where id = (select id from auth.users where email = 'gasparenavarra2@gmail.com');
 
 -- storage bucket + RLS for avatar images, fixed path convention: {user_id}/avatar (no extension)
 insert into storage.buckets (id, name, public)

@@ -66,6 +66,12 @@ const router = createRouter({
       meta: { tab: 'settings' },
     },
     {
+      path: '/settings/tickets',
+      name: 'settings-tickets',
+      component: () => import('../views/settings/TicketsView.vue'),
+      meta: { tab: 'settings' },
+    },
+    {
       path: '/settings/security',
       name: 'settings-security',
       component: () => import('../views/settings/SecuritySettingsView.vue'),
