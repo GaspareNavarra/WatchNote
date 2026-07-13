@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import { useTitlesStore } from '../stores/titles'
@@ -7,6 +8,7 @@ import type { EpisodeRow } from '../types/database'
 
 const props = defineProps<{ titleId: string; seasonNumber: number; episodes: EpisodeRow[] }>()
 
+const { t } = useI18n({ useScope: 'global' })
 const titlesStore = useTitlesStore()
 
 const sorted = computed(() => [...props.episodes].sort((a, b) => a.episode_number - b.episode_number))
@@ -32,18 +34,18 @@ async function removeEpisode(episode: EpisodeRow) {
 <template>
   <div class="season">
     <div class="season-header">
-      <h3>Stagione {{ seasonNumber }}</h3>
+      <h3>{{ t('seasonBlock.title', { number: seasonNumber }) }}</h3>
       <div class="season-actions">
         <span class="count">{{ watchedCount }}/{{ episodes.length }}</span>
-        <Button label="Segna tutti" link size="small" @click="markAllWatched(true)" />
-        <Button label="Azzera" link size="small" @click="markAllWatched(false)" />
+        <Button :label="t('seasonBlock.markAll')" link size="small" @click="markAllWatched(true)" />
+        <Button :label="t('seasonBlock.clear')" link size="small" @click="markAllWatched(false)" />
       </div>
     </div>
     <ul class="episode-list">
       <li v-for="episode in sorted" :key="episode.id" class="episode-row">
         <label class="episode-label">
           <Checkbox :model-value="episode.watched" binary @update:model-value="toggle(episode)" />
-          <span>Episodio {{ episode.episode_number }}<template v-if="episode.name"> — {{ episode.name }}</template></span>
+          <span>{{ t('seasonBlock.episode', { number: episode.episode_number }) }}<template v-if="episode.name"> — {{ episode.name }}</template></span>
         </label>
         <Button icon="pi pi-times" text rounded size="small" severity="secondary" @click="removeEpisode(episode)" />
       </li>

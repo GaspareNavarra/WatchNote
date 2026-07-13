@@ -1,31 +1,34 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Card from 'primevue/card'
 import SelectButton from 'primevue/selectbutton'
 import { useThemeStore, type ThemeVariant } from '../../stores/theme'
 
 const theme = useThemeStore()
+const { t } = useI18n({ useScope: 'global' })
 
-const modeOptions = [
-  { value: 'light', label: 'Chiaro', icon: 'pi pi-sun' },
-  { value: 'dark', label: 'Scuro', icon: 'pi pi-moon' },
-]
+const modeOptions = computed(() => [
+  { value: 'light', label: t('settings.theme.modes.light'), icon: 'pi pi-sun' },
+  { value: 'dark', label: t('settings.theme.modes.dark'), icon: 'pi pi-moon' },
+])
 
-const variantOptions: { value: ThemeVariant; label: string; swatch: string }[] = [
-  { value: 'primary', label: 'Verde', swatch: '#10b981' },
-  { value: 'secondary', label: 'Ciano', swatch: '#00478f' },
-  { value: 'nebula', label: 'Nebula', swatch: '#7c3aed' },
-]
+const variantOptions = computed<{ value: ThemeVariant; label: string; swatch: string }[]>(() => [
+  { value: 'primary', label: t('settings.theme.variants.primary'), swatch: '#10b981' },
+  { value: 'secondary', label: t('settings.theme.variants.secondary'), swatch: '#00478f' },
+  { value: 'nebula', label: t('settings.theme.variants.nebula'), swatch: '#7c3aed' },
+])
 </script>
 
 <template>
   <div class="page">
-    <RouterLink :to="{ name: 'settings' }" class="back">← Impostazioni</RouterLink>
-    <h1>Tema</h1>
+    <RouterLink :to="{ name: 'settings' }" class="back">← {{ t('settings.title') }}</RouterLink>
+    <h1>{{ t('settings.theme.title') }}</h1>
 
     <Card class="theme-card">
       <template #content>
         <section class="section">
-          <h3>Modalità</h3>
+          <h3>{{ t('settings.theme.modeLabel') }}</h3>
           <SelectButton
             :model-value="theme.mode"
             :options="modeOptions"
@@ -42,7 +45,7 @@ const variantOptions: { value: ThemeVariant; label: string; swatch: string }[] =
         </section>
 
         <section class="section">
-          <h3>Colore</h3>
+          <h3>{{ t('settings.theme.colorLabel') }}</h3>
           <SelectButton
             :model-value="theme.variant"
             :options="variantOptions"

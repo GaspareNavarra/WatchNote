@@ -1,3 +1,5 @@
+import { i18n } from '../i18n'
+
 export type Categoria = 'film' | 'serie' | 'anime'
 export type Stato = 'visto' | 'in_corso' | 'da_vedere' | 'abbandonato'
 
@@ -25,11 +27,8 @@ export const statoIcon: Record<Stato, string> = {
   abbandonato: 'pi pi-times',
 }
 
-export const statoLabel: Record<Stato, string> = {
-  in_corso: 'In corso',
-  da_vedere: 'Da vedere',
-  visto: 'Visto',
-  abbandonato: 'Abbandonato',
+export function statoLabel(stato: Stato): string {
+  return i18n.global.t(`home.status.${stato}`)
 }
 
 export const categoriaIcon: Record<Categoria, string> = {
@@ -45,7 +44,7 @@ export function progresso(t: Titolo): number {
 
 export function episodiLabel(t: Titolo): string {
   if (t.categoria === 'film') {
-    return t.stato === 'visto' ? 'Film · visto' : 'Film'
+    return t.stato === 'visto' ? i18n.global.t('home.episodes.movieWatched') : i18n.global.t('home.episodes.movie')
   }
-  return `${t.episodiVisti}/${t.episodiTotali} ep`
+  return i18n.global.t('home.episodes.count', { watched: t.episodiVisti, total: t.episodiTotali })
 }

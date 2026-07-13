@@ -31,11 +31,11 @@ withDefaults(
       <slot name="trailing">
         <svg
           v-if="showChevron"
+          class="chevron-icon"
           width="18"
           height="18"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="#5f597a"
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -56,7 +56,7 @@ withDefaults(
   padding: 15px 16px;
   min-height: 44px;
   border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--hairline-border);
   background: transparent;
   color: inherit;
   font-family: inherit;
@@ -96,7 +96,7 @@ withDefaults(
 
 .subtitle {
   font-size: 13px;
-  color: #8f88a8;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -105,5 +105,9 @@ withDefaults(
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+}
+
+.chevron-icon {
+  stroke: var(--text-secondary);
 }
 </style>

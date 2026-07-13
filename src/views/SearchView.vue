@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
@@ -10,6 +11,7 @@ import { searchAnime, getTopAnime } from '../lib/jikan'
 import { fromTmdb, fromJikan, type UnifiedResult } from '../lib/media'
 import SearchResultTile from '../components/SearchResultTile.vue'
 
+const { t } = useI18n({ useScope: 'global' })
 const query = ref('')
 const recommended = ref<UnifiedResult[]>([])
 const results = ref<UnifiedResult[]>([])
@@ -31,7 +33,7 @@ async function loadRecommended() {
   if (trending.status === 'fulfilled') items.push(...trending.value.map(fromTmdb))
   if (topAnime.status === 'fulfilled') items.push(...topAnime.value.map(fromJikan))
   if (trending.status === 'rejected' && topAnime.status === 'rejected') {
-    error.value = 'Impossibile caricare i consigliati al momento.'
+    error.value = t('search.recommendedError')
   }
   recommended.value = sortByTitle(items)
   loading.value = false
@@ -46,7 +48,7 @@ async function runSearch(q: string) {
   if (tv.status === 'fulfilled') items.push(...tv.value.map(fromTmdb))
   if (anime.status === 'fulfilled') items.push(...anime.value.map(fromJikan))
   if (movies.status === 'rejected' && tv.status === 'rejected' && anime.status === 'rejected') {
-    error.value = 'Ricerca non riuscita. Riprova tra qualche istante.'
+    error.value = t('search.searchError')
   }
   results.value = sortByTitle(items)
   loading.value = false
@@ -71,12 +73,12 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
   <div class="search-view">
     <IconField class="search-field">
       <InputIcon class="pi pi-search" />
-      <InputText v-model="query" placeholder="Cerca film, serie o anime..." class="search-input" />
+      <InputText v-model="query" :placeholder="t('search.placeholder')" class="search-input" />
     </IconField>
 
     <div class="heading">
-      <h2>{{ mode === 'recommended' ? 'Consigliati per te' : `Risultati per "${query}"` }}</h2>
-      <p v-if="mode === 'results'" class="subtext">Risultati di ricerca</p>
+      <h2>{{ mode === 'recommended' ? t('search.recommendedHeading') : t('search.resultsHeading', { query }) }}</h2>
+      <p v-if="mode === 'results'" class="subtext">{{ t('search.resultsSubtext') }}</p>
     </div>
 
     <div v-if="loading" class="empty">
@@ -84,7 +86,7 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
     </div>
     <Message v-else-if="error" severity="error" :closable="false">{{ error }}</Message>
     <p v-else-if="(mode === 'recommended' ? recommended : results).length === 0" class="empty-text">
-      {{ mode === 'recommended' ? 'Nessun consiglio disponibile al momento.' : 'Nessun risultato trovato.' }}
+      {{ mode === 'recommended' ? t('search.emptyRecommended') : t('search.emptyResults') }}
     </p>
 
     <ul v-else class="results-list">

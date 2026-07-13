@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
+const { t } = useI18n({ useScope: 'global' })
 const activeTab = computed(() => route.meta.tab as string | undefined)
 
-const items = [
-  { tab: 'home', to: { name: 'home' }, icon: 'pi pi-home', label: 'Home' },
-  { tab: 'search', to: { name: 'search' }, icon: 'pi pi-search', label: 'Cerca' },
-  { tab: 'settings', to: { name: 'settings' }, icon: 'pi pi-cog', label: 'Impostazioni' },
-]
+const items = computed(() => [
+  { tab: 'home', to: { name: 'home' }, icon: 'pi pi-home', label: t('nav.home') },
+  { tab: 'search', to: { name: 'search' }, icon: 'pi pi-search', label: t('nav.search') },
+  { tab: 'settings', to: { name: 'settings' }, icon: 'pi pi-cog', label: t('nav.settings') },
+])
 </script>
 
 <template>

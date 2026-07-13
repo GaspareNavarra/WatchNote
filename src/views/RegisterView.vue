@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -10,6 +11,7 @@ import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const { t } = useI18n({ useScope: 'global' })
 
 const email = ref('')
 const password = ref('')
@@ -27,7 +29,7 @@ async function handleSubmit() {
   info.value = ''
 
   if (password.value !== confirmPassword.value) {
-    error.value = 'Le password non coincidono'
+    error.value = t('auth.register.passwordMismatch')
     return
   }
 
@@ -35,12 +37,12 @@ async function handleSubmit() {
   try {
     await auth.signUp(email.value, password.value)
     if (!auth.session) {
-      info.value = 'Controlla la tua email per confermare la registrazione.'
+      info.value = t('auth.register.confirmEmail')
     } else {
       router.push({ name: 'home' })
     }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Si è verificato un errore'
+    error.value = e instanceof Error ? e.message : t('auth.register.genericError')
   } finally {
     loading.value = false
   }
@@ -51,16 +53,16 @@ async function handleSubmit() {
   <div class="register-page">
     <Card class="register-card">
       <template #title>WatchNote</template>
-      <template #subtitle>Crea un nuovo account</template>
+      <template #subtitle>{{ t('auth.register.subtitle') }}</template>
       <template #content>
         <form class="form" @submit.prevent="handleSubmit">
           <label class="field">
-            <span>Email</span>
+            <span>{{ t('auth.register.email') }}</span>
             <InputText v-model="email" type="email" required autocomplete="email" />
           </label>
 
           <label class="field">
-            <span>Password</span>
+            <span>{{ t('auth.register.password') }}</span>
             <Password
               v-model="password"
               :feedback="false"
@@ -72,7 +74,7 @@ async function handleSubmit() {
           </label>
 
           <label class="field">
-            <span>Conferma password</span>
+            <span>{{ t('auth.register.confirmPassword') }}</span>
             <Password
               v-model="confirmPassword"
               :feedback="false"
@@ -82,19 +84,19 @@ async function handleSubmit() {
               :input-props="{ minlength: 6 }"
               :invalid="passwordsMismatch"
             />
-            <small v-if="passwordsMismatch" class="mismatch">Le password non coincidono</small>
+            <small v-if="passwordsMismatch" class="mismatch">{{ t('auth.register.passwordMismatch') }}</small>
           </label>
 
           <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
           <Message v-if="info" severity="success" :closable="false">{{ info }}</Message>
 
-          <Button type="submit" label="Registrati" :loading="loading" />
+          <Button type="submit" :label="t('auth.register.submit')" :loading="loading" />
 
           <Button
             type="button"
             link
             class="toggle-link"
-            label="Hai già un account? Accedi"
+            :label="t('auth.register.toggleLink')"
             @click="router.push({ name: 'login' })"
           />
         </form>

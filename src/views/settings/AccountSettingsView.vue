@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import { useAuthStore } from '../../stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const { t } = useI18n({ useScope: 'global' })
 
 const email = computed(() => auth.user?.email ?? '')
 
@@ -17,10 +19,10 @@ async function handleSignOut() {
 
 <template>
   <div class="page">
-    <RouterLink :to="{ name: 'settings' }" class="back">← Impostazioni</RouterLink>
-    <h1>Account</h1>
+    <RouterLink :to="{ name: 'settings' }" class="back">← {{ t('settings.title') }}</RouterLink>
+    <h1>{{ t('settings.account.title') }}</h1>
     <p class="email">{{ email }}</p>
-    <Button label="Esci" severity="danger" outlined @click="handleSignOut" />
+    <Button :label="t('settings.account.signOut')" severity="danger" outlined @click="handleSignOut" />
   </div>
 </template>
 

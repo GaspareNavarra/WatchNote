@@ -160,11 +160,11 @@ async function selectLanguage(value: AppLocale) {
           <template #trailing>
             <Badge v-if="featureRequests.pendingCount > 0" :value="featureRequests.pendingCount" class="requests-badge" />
             <svg
+              class="chevron-icon"
               width="18"
               height="18"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#5f597a"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -278,7 +278,7 @@ async function selectLanguage(value: AppLocale) {
 .settings-screen {
   min-height: 100%;
   font-family: 'Inter', system-ui, sans-serif;
-  color: #ffffff;
+  color: var(--text-primary);
   background: var(--app-gradient);
 }
 
@@ -295,7 +295,7 @@ async function selectLanguage(value: AppLocale) {
 
 .header p {
   font-size: 14px;
-  color: #8f88a8;
+  color: var(--text-secondary);
   margin: 4px 0 0;
 }
 
@@ -310,7 +310,7 @@ async function selectLanguage(value: AppLocale) {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6f6890;
+  color: var(--text-muted);
   margin: 10px 8px 10px;
 }
 
@@ -319,8 +319,8 @@ async function selectLanguage(value: AppLocale) {
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-card);
+  border: 1px solid var(--hairline-border);
   border-radius: 20px;
   overflow: hidden;
   backdrop-filter: blur(8px);
@@ -330,8 +330,12 @@ async function selectLanguage(value: AppLocale) {
 .version {
   text-align: center;
   font-size: 12px;
-  color: #4f4a68;
+  color: var(--text-muted);
   margin: 26px 0 8px;
+}
+
+.chevron-icon {
+  stroke: var(--text-secondary);
 }
 
 .requests-badge {
@@ -346,7 +350,8 @@ async function selectLanguage(value: AppLocale) {
 }
 
 .notif-switch :deep(.p-toggleswitch-slider) {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--surface-chip);
+  border: 1px solid var(--hairline-border);
 }
 
 .notif-switch.p-toggleswitch-checked :deep(.p-toggleswitch-slider) {
@@ -363,17 +368,17 @@ async function selectLanguage(value: AppLocale) {
 }
 
 .language-dialog :deep(.p-dialog) {
-  background: #16131f;
+  background: var(--surface-overlay);
 }
 
 .language-dialog:deep(.p-dialog-header),
 .language-dialog :deep(.p-dialog-content) {
-  background: #16131f;
-  color: #ffffff;
+  background: var(--surface-overlay);
+  color: var(--text-primary);
 }
 
 .language-dialog :deep(.p-dialog-title) {
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .language-options {
@@ -389,10 +394,10 @@ async function selectLanguage(value: AppLocale) {
   width: 100%;
   min-height: 44px;
   padding: 0.7rem 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hairline-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
-  color: #ffffff;
+  background: var(--surface-card);
+  color: var(--text-primary);
   font-family: inherit;
   font-size: 15px;
   cursor: pointer;

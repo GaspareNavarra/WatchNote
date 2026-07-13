@@ -33,12 +33,28 @@
   --glass-bg: rgba(255, 255, 255, 0.82);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-shadow: rgba(0, 0, 0, 0.18);
+
+  --text-primary: #17151f;
+  --text-secondary: #5f597a;
+  --text-muted: #8a8398;
+  --hairline-border: rgba(0, 0, 0, 0.12);
+  --surface-card: rgba(255, 255, 255, 0.7);
+  --surface-chip: rgba(0, 0, 0, 0.045);
+  --surface-overlay: #ffffff;
 }
 
 :root.dark-mode {
   --glass-bg: rgba(18, 16, 24, 0.86);
   --glass-border: rgba(255, 255, 255, 0.12);
   --glass-shadow: rgba(0, 0, 0, 0.45);
+
+  --text-primary: #ffffff;
+  --text-secondary: #8f88a8;
+  --text-muted: #6f6890;
+  --hairline-border: rgba(255, 255, 255, 0.08);
+  --surface-card: rgba(255, 255, 255, 0.035);
+  --surface-chip: rgba(255, 255, 255, 0.05);
+  --surface-overlay: #16131f;
 }
 
 * {

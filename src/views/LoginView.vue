@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -10,6 +11,7 @@ import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const { t } = useI18n({ useScope: 'global' })
 
 const email = ref('')
 const password = ref('')
@@ -23,7 +25,7 @@ async function handleSubmit() {
     await auth.signIn(email.value, password.value)
     router.push({ name: 'home' })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Si è verificato un errore'
+    error.value = e instanceof Error ? e.message : t('auth.login.genericError')
   } finally {
     loading.value = false
   }
@@ -34,16 +36,16 @@ async function handleSubmit() {
   <div class="login-page">
     <Card class="login-card">
       <template #title>WatchNote</template>
-      <template #subtitle>Accedi al tuo account</template>
+      <template #subtitle>{{ t('auth.login.subtitle') }}</template>
       <template #content>
         <form class="form" @submit.prevent="handleSubmit">
           <label class="field">
-            <span>Email</span>
+            <span>{{ t('auth.login.email') }}</span>
             <InputText v-model="email" type="email" required autocomplete="email" />
           </label>
 
           <label class="field">
-            <span>Password</span>
+            <span>{{ t('auth.login.password') }}</span>
             <Password
               v-model="password"
               :feedback="false"
@@ -56,13 +58,13 @@ async function handleSubmit() {
 
           <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
 
-          <Button type="submit" label="Accedi" :loading="loading" />
+          <Button type="submit" :label="t('auth.login.submit')" :loading="loading" />
 
           <Button
             type="button"
             link
             class="toggle-link"
-            label="Non hai un account? Registrati"
+            :label="t('auth.login.toggleLink')"
             @click="router.push({ name: 'register' })"
           />
         </form>

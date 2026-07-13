@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
@@ -9,11 +10,12 @@ import Message from 'primevue/message'
 import { useTitlesStore } from '../stores/titles'
 import type { TitleStatus, TitleType } from '../types/database'
 import type { Categoria, Stato, Titolo } from '../lib/titoliUi'
-import { statoColor, statoLabel } from '../lib/titoliUi'
+import { statoColor } from '../lib/titoliUi'
 import HomeTitleCard from '../components/HomeTitleCard.vue'
 
 const router = useRouter()
 const titlesStore = useTitlesStore()
+const { t } = useI18n({ useScope: 'global' })
 
 function toCategoria(type: TitleType): Categoria {
   if (type === 'movie') return 'film'
@@ -54,20 +56,20 @@ const query = ref('')
 const categoriaAttiva = ref<'tutti' | Categoria>('tutti')
 const statoAttivo = ref<'tutti' | Stato>('tutti')
 
-const categorieOptions: { value: 'tutti' | Categoria; label: string; icon: string }[] = [
-  { value: 'tutti', label: 'Tutti', icon: 'pi pi-th-large' },
-  { value: 'film', label: 'Film', icon: 'pi pi-video' },
-  { value: 'serie', label: 'Serie', icon: 'pi pi-desktop' },
-  { value: 'anime', label: 'Anime', icon: 'pi pi-star' },
-]
+const categorieOptions = computed<{ value: 'tutti' | Categoria; label: string; icon: string }[]>(() => [
+  { value: 'tutti', label: t('home.categories.tutti'), icon: 'pi pi-th-large' },
+  { value: 'film', label: t('home.categories.film'), icon: 'pi pi-video' },
+  { value: 'serie', label: t('home.categories.serie'), icon: 'pi pi-desktop' },
+  { value: 'anime', label: t('home.categories.anime'), icon: 'pi pi-star' },
+])
 
-const statoOptions: { value: 'tutti' | Stato; label: string; dot: string }[] = [
-  { value: 'tutti', label: 'Tutti gli stati', dot: 'transparent' },
-  { value: 'in_corso', label: 'In corso', dot: statoColor.in_corso },
-  { value: 'da_vedere', label: 'Da vedere', dot: statoColor.da_vedere },
-  { value: 'visto', label: 'Visto', dot: statoColor.visto },
-  { value: 'abbandonato', label: 'Abbandonato', dot: statoColor.abbandonato },
-]
+const statoOptions = computed<{ value: 'tutti' | Stato; label: string; dot: string }[]>(() => [
+  { value: 'tutti', label: t('home.status.tutti'), dot: 'transparent' },
+  { value: 'in_corso', label: t('home.status.in_corso'), dot: statoColor.in_corso },
+  { value: 'da_vedere', label: t('home.status.da_vedere'), dot: statoColor.da_vedere },
+  { value: 'visto', label: t('home.status.visto'), dot: statoColor.visto },
+  { value: 'abbandonato', label: t('home.status.abbandonato'), dot: statoColor.abbandonato },
+])
 
 // Ordine di priorità delle sezioni quando sono visibili tutti gli stati.
 const statoOrder: Stato[] = ['in_corso', 'da_vedere', 'visto', 'abbandonato']
@@ -93,8 +95,8 @@ const sezioni = computed(() =>
   statoOrder
     .map((stato) => ({
       stato,
-      label: statoLabel[stato],
-      items: titoliFiltrati.value.filter((t) => t.stato === stato),
+      label: t(`home.status.${stato}`),
+      items: titoliFiltrati.value.filter((it) => it.stato === stato),
     }))
     .filter((sezione) => sezione.items.length > 0)
 )
@@ -110,32 +112,32 @@ function apriDettaglio(t: Titolo) {
       <img src="/logo.png" alt="WatchNote" class="logo-box" />
       <div class="header-text">
         <h1>WatchNote</h1>
-        <p>{{ titoli.length }} titoli in raccolta</p>
+        <p>{{ t('home.titleCount', { count: titoli.length }) }}</p>
       </div>
     </header>
 
     <div class="home-content">
       <IconField class="search-field">
         <InputIcon class="pi pi-search" />
-        <InputText v-model="query" placeholder="Cerca serie, film o anime…" class="search-input" />
+        <InputText v-model="query" :placeholder="t('home.searchPlaceholder')" class="search-input" />
       </IconField>
 
       <div class="stats-grid">
         <div class="stat-cell">
           <span class="stat-value" :style="{ color: statoColor.visto }">{{ stats.visto }}</span>
-          <span class="stat-label">Visti</span>
+          <span class="stat-label">{{ t('home.stats.visto') }}</span>
         </div>
         <div class="stat-cell">
           <span class="stat-value" :style="{ color: statoColor.in_corso }">{{ stats.in_corso }}</span>
-          <span class="stat-label">In corso</span>
+          <span class="stat-label">{{ t('home.stats.in_corso') }}</span>
         </div>
         <div class="stat-cell">
           <span class="stat-value" :style="{ color: statoColor.da_vedere }">{{ stats.da_vedere }}</span>
-          <span class="stat-label">Da vedere</span>
+          <span class="stat-label">{{ t('home.stats.da_vedere') }}</span>
         </div>
         <div class="stat-cell">
           <span class="stat-value" :style="{ color: statoColor.abbandonato }">{{ stats.abbandonato }}</span>
-          <span class="stat-label">Mollati</span>
+          <span class="stat-label">{{ t('home.stats.abbandonato') }}</span>
         </div>
       </div>
 
@@ -173,7 +175,7 @@ function apriDettaglio(t: Titolo) {
       <Message v-else-if="titlesStore.error" severity="error" :closable="false">{{ titlesStore.error }}</Message>
       <div v-else-if="titoliFiltrati.length === 0" class="empty-state">
         <i class="pi pi-inbox"></i>
-        <p>Nessun titolo trovato</p>
+        <p>{{ t('home.empty') }}</p>
       </div>
 
       <div v-else-if="statoAttivo === 'tutti'" class="sections">
@@ -200,12 +202,12 @@ function apriDettaglio(t: Titolo) {
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 .home-screen {
-  --bg-primary-text: #f1f5f9;
-  --bg-muted-text: #8b8b96;
+  --bg-primary-text: var(--text-primary);
+  --bg-muted-text: var(--text-secondary);
   --bg-accent: var(--p-primary-color);
-  --bg-border: rgba(255, 255, 255, 0.08);
-  --bg-chip: rgba(255, 255, 255, 0.05);
-  --bg-card: #16141c;
+  --bg-border: var(--hairline-border);
+  --bg-chip: var(--surface-chip);
+  --bg-card: var(--surface-overlay);
 
   position: relative;
   min-height: 100%;
@@ -222,7 +224,7 @@ function apriDettaglio(t: Titolo) {
   align-items: center;
   gap: 0.75rem;
   padding: calc(0.85rem + env(safe-area-inset-top)) 1.1rem 0.85rem;
-  background: rgba(13, 11, 18, 0.68);
+  background: var(--glass-bg);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--bg-border);
@@ -372,7 +374,7 @@ function apriDettaglio(t: Titolo) {
 }
 
 .status-chip.active {
-  background: rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--bg-primary-text) 14%, transparent);
   color: var(--bg-primary-text);
 }
 
@@ -412,7 +414,7 @@ function apriDettaglio(t: Titolo) {
   padding: 0.3rem 0.85rem;
   border-radius: 999px;
   border: 1px solid;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-chip);
   font-size: 0.75rem;
   font-weight: 700;
 }
