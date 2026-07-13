@@ -30,15 +30,15 @@
 }
 
 :root {
-  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg: rgba(255, 255, 255, 0.82);
   --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-shadow: rgba(0, 0, 0, 0.15);
+  --glass-shadow: rgba(0, 0, 0, 0.18);
 }
 
 :root.dark-mode {
-  --glass-bg: rgba(28, 28, 30, 0.45);
+  --glass-bg: rgba(18, 16, 24, 0.86);
   --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-shadow: rgba(0, 0, 0, 0.4);
+  --glass-shadow: rgba(0, 0, 0, 0.45);
 }
 
 * {
