@@ -99,7 +99,7 @@ async function selectLanguage(value: AppLocale) {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#a892f2"
+              stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -121,15 +121,15 @@ async function selectLanguage(value: AppLocale) {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#a892f2"
+              stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <circle cx="13.5" cy="6.5" r=".5" fill="#a892f2"></circle>
-              <circle cx="17.5" cy="10.5" r=".5" fill="#a892f2"></circle>
-              <circle cx="8.5" cy="7.5" r=".5" fill="#a892f2"></circle>
-              <circle cx="6.5" cy="12.5" r=".5" fill="#a892f2"></circle>
+              <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+              <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+              <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+              <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
               <path
                 d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
               ></path>
@@ -148,7 +148,7 @@ async function selectLanguage(value: AppLocale) {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#a892f2"
+              stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -188,7 +188,7 @@ async function selectLanguage(value: AppLocale) {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#a892f2"
+              stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -219,7 +219,7 @@ async function selectLanguage(value: AppLocale) {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#a892f2"
+              stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -254,11 +254,12 @@ async function selectLanguage(value: AppLocale) {
           <span>{{ option.label }}</span>
           <svg
             v-if="locale.locale === option.value"
+            class="check-icon"
             width="18"
             height="18"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#a892f2"
+            stroke="currentColor"
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -278,7 +279,7 @@ async function selectLanguage(value: AppLocale) {
   min-height: 100%;
   font-family: 'Inter', system-ui, sans-serif;
   color: #ffffff;
-  background: radial-gradient(120% 80% at 15% 0%, #1c1830 0%, #131022 45%, #0a0810 100%);
+  background: var(--app-gradient);
 }
 
 .header {
@@ -397,8 +398,12 @@ async function selectLanguage(value: AppLocale) {
   cursor: pointer;
 }
 
+.language-option .check-icon {
+  color: var(--p-primary-color);
+}
+
 .language-option.active {
-  border-color: rgba(168, 146, 242, 0.5);
-  background: rgba(155, 127, 230, 0.14);
+  border-color: color-mix(in srgb, var(--p-primary-color) 50%, transparent);
+  background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
 }
 </style>

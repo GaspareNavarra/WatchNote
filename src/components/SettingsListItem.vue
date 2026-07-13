@@ -76,7 +76,8 @@ withDefaults(
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: rgba(155, 127, 230, 0.14);
+  background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
+  color: var(--p-primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
