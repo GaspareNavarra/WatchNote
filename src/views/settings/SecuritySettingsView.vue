@@ -7,6 +7,7 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import { useAuthStore } from '../../stores/auth'
+import BackButton from '../../components/BackButton.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -91,7 +92,7 @@ async function handleUpdatePassword() {
 
 <template>
   <div class="page">
-    <RouterLink :to="{ name: 'settings' }" class="back">← {{ t('settings.title') }}</RouterLink>
+    <BackButton :to="{ name: 'settings' }" />
     <h1>{{ t('settings.security.title') }}</h1>
 
     <Card class="section-card">
@@ -168,13 +169,6 @@ async function handleUpdatePassword() {
   max-width: 560px;
   margin: 0 auto;
   padding: 1.25rem;
-}
-
-.back {
-  display: inline-block;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-  text-decoration: none;
 }
 
 .section-card {

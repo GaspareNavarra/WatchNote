@@ -6,6 +6,7 @@ export default {
   },
   common: {
     loading: 'Caricamento…',
+    back: 'Indietro',
   },
   settings: {
     title: 'Impostazioni',
@@ -48,10 +49,19 @@ export default {
         light: 'Chiaro',
         dark: 'Scuro',
       },
+      modeDescriptions: {
+        light: 'Sfondo chiaro, testo scuro',
+        dark: 'Sfondo scuro, testo chiaro',
+      },
       variants: {
         primary: 'Verde',
         secondary: 'Ciano',
         nebula: 'Nebula',
+      },
+      variantDescriptions: {
+        primary: 'Il verde originale di WatchNote',
+        secondary: 'Un blu ciano più freddo',
+        nebula: 'Viola vibrante per un tocco diverso',
       },
     },
     security: {

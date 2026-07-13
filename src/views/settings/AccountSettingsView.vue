@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import Avatar from 'primevue/avatar'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
@@ -13,12 +14,14 @@ import { useProfileStore } from '../../stores/profile'
 import { useTitlesStore } from '../../stores/titles'
 import SettingsListItem from '../../components/SettingsListItem.vue'
 import AvatarCropModal from '../../components/AvatarCropModal.vue'
+import BackButton from '../../components/BackButton.vue'
 
 const auth = useAuthStore()
 const profileStore = useProfileStore()
 const titlesStore = useTitlesStore()
 const router = useRouter()
 const toast = useToast()
+const confirm = useConfirm()
 const { t } = useI18n({ useScope: 'global' })
 
 const fileInput = ref<HTMLInputElement>()
@@ -124,11 +127,26 @@ async function handleSave() {
 function goToSecurity() {
   router.push({ name: 'settings-security' })
 }
+
+function handleLogout() {
+  confirm.require({
+    message: t('settings.session.confirm.message'),
+    header: t('settings.session.confirm.header'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: t('settings.session.confirm.accept'),
+    rejectLabel: t('settings.session.confirm.reject'),
+    acceptProps: { severity: 'danger' },
+    accept: async () => {
+      await auth.signOut()
+      router.push({ name: 'login' })
+    },
+  })
+}
 </script>
 
 <template>
   <div class="page">
-    <RouterLink :to="{ name: 'settings' }" class="back">← {{ t('settings.title') }}</RouterLink>
+    <BackButton :to="{ name: 'settings' }" />
     <h1>{{ t('settings.account.title') }}</h1>
     <p class="email">{{ auth.user?.email }}</p>
 
@@ -213,6 +231,17 @@ function goToSecurity() {
       </SettingsListItem>
     </div>
 
+    <div class="logout-section">
+      <Button
+        :label="t('settings.session.logoutButton')"
+        icon="pi pi-sign-out"
+        severity="danger"
+        text
+        class="logout-btn"
+        @click="handleLogout"
+      />
+    </div>
+
     <AvatarCropModal
       :visible="cropModalVisible"
       :file="pendingFile"
@@ -227,13 +256,6 @@ function goToSecurity() {
   max-width: 560px;
   margin: 0 auto;
   padding: 1.25rem;
-}
-
-.back {
-  display: inline-block;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-  text-decoration: none;
 }
 
 .email {
@@ -366,5 +388,30 @@ function goToSecurity() {
   border: 1px solid var(--p-content-border-color);
   border-radius: 20px;
   overflow: hidden;
+}
+
+.logout-section {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 20px;
+  padding: 4px;
+  margin-top: 1rem;
+}
+
+.logout-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 13px 16px;
+  font-weight: 600;
+  border-radius: 16px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.logout-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--p-red-500, #ef4444) 12%, transparent);
+}
+
+.logout-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--p-red-500, #ef4444) 20%, transparent);
 }
 </style>

@@ -405,6 +405,17 @@ async function selectLanguage(value: AppLocale) {
   justify-content: center;
   padding: 13px 16px;
   font-weight: 600;
+  border-radius: 16px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.logout-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--p-red-500, #ef4444) 12%, transparent);
+}
+
+.logout-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--p-red-500, #ef4444) 20%, transparent);
 }
 
 .requests-badge {

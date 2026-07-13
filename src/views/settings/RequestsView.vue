@@ -8,6 +8,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { useFeatureRequestsStore } from '../../stores/featureRequests'
+import BackButton from '../../components/BackButton.vue'
 
 const store = useFeatureRequestsStore()
 const toast = useToast()
@@ -71,7 +72,7 @@ function formatDate(iso: string) {
 
 <template>
   <div class="page">
-    <RouterLink :to="{ name: 'settings' }" class="back">← {{ t('settings.title') }}</RouterLink>
+    <BackButton :to="{ name: 'settings' }" />
     <h1>{{ t('settings.requests.title') }}</h1>
     <p class="hint">
       {{ t('settings.requests.hint') }}
@@ -114,13 +115,6 @@ function formatDate(iso: string) {
   max-width: 560px;
   margin: 0 auto;
   padding: 1.25rem;
-}
-
-.back {
-  display: inline-block;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-  text-decoration: none;
 }
 
 .hint {

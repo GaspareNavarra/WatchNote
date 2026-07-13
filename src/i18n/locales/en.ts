@@ -6,6 +6,7 @@ export default {
   },
   common: {
     loading: 'Loading…',
+    back: 'Back',
   },
   settings: {
     title: 'Settings',
@@ -48,10 +49,19 @@ export default {
         light: 'Light',
         dark: 'Dark',
       },
+      modeDescriptions: {
+        light: 'Light background, dark text',
+        dark: 'Dark background, light text',
+      },
       variants: {
         primary: 'Green',
         secondary: 'Cyan',
         nebula: 'Nebula',
+      },
+      variantDescriptions: {
+        primary: "WatchNote's original green",
+        secondary: 'A cooler cyan blue',
+        nebula: 'Vibrant purple for a different vibe',
       },
     },
     security: {

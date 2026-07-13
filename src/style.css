@@ -38,6 +38,7 @@
   --text-secondary: #5f597a;
   --text-muted: #8a8398;
   --hairline-border: rgba(0, 0, 0, 0.12);
+  --divider-color: rgba(0, 0, 0, 0.08);
   --surface-card: rgba(255, 255, 255, 0.7);
   --surface-chip: rgba(0, 0, 0, 0.045);
   --surface-overlay: #ffffff;
@@ -54,6 +55,7 @@
   --text-secondary: #8f88a8;
   --text-muted: #6f6890;
   --hairline-border: rgba(255, 255, 255, 0.08);
+  --divider-color: rgba(255, 255, 255, 0.06);
   --surface-card: rgba(255, 255, 255, 0.035);
   --surface-chip: rgba(255, 255, 255, 0.05);
   --surface-overlay: #16131f;
