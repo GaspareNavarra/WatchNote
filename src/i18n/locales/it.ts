@@ -26,6 +26,9 @@ export default {
       saveError: 'Errore durante il salvataggio',
       avatarChange: 'Cambia foto',
       avatarError: 'Errore durante il caricamento della foto',
+      cropTitle: 'Ritaglia la foto',
+      cropCancel: 'Annulla',
+      cropConfirm: 'Conferma',
       stats: {
         title: 'Statistiche',
         totalTitles: 'Titoli totali',

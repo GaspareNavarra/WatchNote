@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useProfileStore } from '../../stores/profile'
 import { useTitlesStore } from '../../stores/titles'
 import SettingsListItem from '../../components/SettingsListItem.vue'
+import AvatarCropModal from '../../components/AvatarCropModal.vue'
 
 const auth = useAuthStore()
 const profileStore = useProfileStore()
@@ -22,6 +23,8 @@ const { t } = useI18n({ useScope: 'global' })
 
 const fileInput = ref<HTMLInputElement>()
 const avatarLoadError = ref(false)
+const cropModalVisible = ref(false)
+const pendingFile = ref<File | null>(null)
 
 const nickname = ref('')
 const bio = ref('')
@@ -70,14 +73,20 @@ function triggerFileSelect() {
   fileInput.value?.click()
 }
 
-async function handleFileChange(event: Event) {
+function handleFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
+  pendingFile.value = file
+  cropModalVisible.value = true
+}
+
+async function handleCropConfirm(blob: Blob) {
+  cropModalVisible.value = false
   avatarLoadError.value = false
   try {
-    await profileStore.uploadAvatar(file)
+    await profileStore.uploadAvatar(blob)
   } catch (e) {
     toast.add({
       severity: 'error',
@@ -85,7 +94,14 @@ async function handleFileChange(event: Event) {
       detail: e instanceof Error ? e.message : t('settings.account.avatarError'),
       life: 5000,
     })
+  } finally {
+    pendingFile.value = null
   }
+}
+
+function handleCropModalVisibility(visible: boolean) {
+  cropModalVisible.value = visible
+  if (!visible) pendingFile.value = null
 }
 
 async function handleSave() {
@@ -196,6 +212,13 @@ function goToSecurity() {
         </template>
       </SettingsListItem>
     </div>
+
+    <AvatarCropModal
+      :visible="cropModalVisible"
+      :file="pendingFile"
+      @update:visible="handleCropModalVisibility"
+      @confirm="handleCropConfirm"
+    />
   </div>
 </template>
 

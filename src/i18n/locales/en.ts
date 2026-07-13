@@ -26,6 +26,9 @@ export default {
       saveError: 'Something went wrong while saving',
       avatarChange: 'Change photo',
       avatarError: 'Something went wrong while uploading the photo',
+      cropTitle: 'Crop photo',
+      cropCancel: 'Cancel',
+      cropConfirm: 'Confirm',
       stats: {
         title: 'Statistics',
         totalTitles: 'Total titles',

@@ -59,7 +59,7 @@ export const useProfileStore = defineStore('profile', {
       return data
     },
 
-    async uploadAvatar(file: File) {
+    async uploadAvatar(file: Blob) {
       const auth = useAuthStore()
       if (!auth.user) throw new Error('Not authenticated')
       this.uploading = true
@@ -67,7 +67,7 @@ export const useProfileStore = defineStore('profile', {
         const path = `${auth.user.id}/avatar`
         const { error: uploadError } = await supabase.storage
           .from(AVATAR_BUCKET)
-          .upload(path, file, { upsert: true, contentType: file.type })
+          .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' })
         if (uploadError) throw uploadError
 
         const { data: publicUrlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path)
