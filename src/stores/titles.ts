@@ -86,6 +86,18 @@ export const useTitlesStore = defineStore('titles', {
       delete this.episodesByTitle[id]
     },
 
+    async fetchAllEpisodes() {
+      const { data, error } = await supabase.from('episodes').select('*')
+      if (error) throw error
+      const grouped: Record<string, EpisodeRow[]> = {}
+      for (const ep of data ?? []) {
+        if (!grouped[ep.title_id]) grouped[ep.title_id] = []
+        grouped[ep.title_id].push(ep)
+      }
+      this.episodesByTitle = grouped
+      return grouped
+    },
+
     async fetchEpisodes(titleId: string) {
       const { data, error } = await supabase
         .from('episodes')

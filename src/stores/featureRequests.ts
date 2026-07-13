@@ -24,6 +24,7 @@ export const useFeatureRequestsStore = defineStore('featureRequests', {
       const todayCount = state.requests.filter((r) => isToday(r.created_at)).length
       return Math.max(0, DAILY_LIMIT - todayCount)
     },
+    pendingCount: (state) => state.requests.filter((r) => r.status === 'pending').length,
   },
   actions: {
     async fetchRequests() {

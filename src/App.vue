@@ -30,6 +30,6 @@ main {
 }
 
 main.with-nav {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
 }
 </style>
