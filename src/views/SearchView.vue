@@ -8,7 +8,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import { searchMovies, searchTv, getTrendingAll } from '../lib/tmdb'
 import { searchAnime, getTopAnime } from '../lib/jikan'
-import { fromTmdb, fromJikan, type UnifiedResult } from '../lib/media'
+import { fromTmdb, fromJikan, dedupeAnimeAndSeries, type UnifiedResult } from '../lib/media'
 import SearchResultTile from '../components/SearchResultTile.vue'
 
 const { t } = useI18n({ useScope: 'global' })
@@ -18,6 +18,7 @@ const results = ref<UnifiedResult[]>([])
 const mode = ref<'recommended' | 'results'>('recommended')
 const loading = ref(false)
 const error = ref('')
+const warning = ref('')
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -28,29 +29,41 @@ function sortByTitle(items: UnifiedResult[]): UnifiedResult[] {
 async function loadRecommended() {
   loading.value = true
   error.value = ''
+  warning.value = ''
   const [trending, topAnime] = await Promise.allSettled([getTrendingAll(), getTopAnime()])
   const items: UnifiedResult[] = []
   if (trending.status === 'fulfilled') items.push(...trending.value.map(fromTmdb))
   if (topAnime.status === 'fulfilled') items.push(...topAnime.value.map(fromJikan))
   if (trending.status === 'rejected' && topAnime.status === 'rejected') {
     error.value = t('search.recommendedError')
+  } else if (trending.status === 'rejected') {
+    warning.value = t('search.tmdbUnavailable')
+  } else if (topAnime.status === 'rejected') {
+    warning.value = t('search.animeUnavailable')
   }
-  recommended.value = sortByTitle(items)
+  recommended.value = sortByTitle(dedupeAnimeAndSeries(items))
   loading.value = false
 }
 
 async function runSearch(q: string) {
   loading.value = true
   error.value = ''
+  warning.value = ''
   const [movies, tv, anime] = await Promise.allSettled([searchMovies(q), searchTv(q), searchAnime(q)])
   const items: UnifiedResult[] = []
   if (movies.status === 'fulfilled') items.push(...movies.value.map(fromTmdb))
   if (tv.status === 'fulfilled') items.push(...tv.value.map(fromTmdb))
   if (anime.status === 'fulfilled') items.push(...anime.value.map(fromJikan))
-  if (movies.status === 'rejected' && tv.status === 'rejected' && anime.status === 'rejected') {
+  const tmdbFailed = movies.status === 'rejected' && tv.status === 'rejected'
+  const animeFailed = anime.status === 'rejected'
+  if (tmdbFailed && animeFailed) {
     error.value = t('search.searchError')
+  } else if (tmdbFailed) {
+    warning.value = t('search.tmdbUnavailable')
+  } else if (animeFailed) {
+    warning.value = t('search.animeUnavailable')
   }
-  results.value = sortByTitle(items)
+  results.value = sortByTitle(dedupeAnimeAndSeries(items))
   loading.value = false
 }
 
@@ -85,15 +98,17 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
       <ProgressSpinner style="width: 2.5rem; height: 2.5rem" stroke-width="4" />
     </div>
     <Message v-else-if="error" severity="error" :closable="false">{{ error }}</Message>
-    <p v-else-if="(mode === 'recommended' ? recommended : results).length === 0" class="empty-text">
-      {{ mode === 'recommended' ? t('search.emptyRecommended') : t('search.emptyResults') }}
-    </p>
-
-    <ul v-else class="results-list">
-      <li v-for="item in mode === 'recommended' ? recommended : results" :key="`${item.type}-${item.id}`">
-        <SearchResultTile :result="item" />
-      </li>
-    </ul>
+    <template v-else>
+      <Message v-if="warning" severity="warn" :closable="false" class="partial-warning">{{ warning }}</Message>
+      <p v-if="(mode === 'recommended' ? recommended : results).length === 0" class="empty-text">
+        {{ mode === 'recommended' ? t('search.emptyRecommended') : t('search.emptyResults') }}
+      </p>
+      <ul v-else class="results-list">
+        <li v-for="item in mode === 'recommended' ? recommended : results" :key="`${item.type}-${item.id}`">
+          <SearchResultTile :result="item" />
+        </li>
+      </ul>
+    </template>
   </div>
 </template>
 
@@ -137,6 +152,10 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
   color: var(--p-text-muted-color);
   text-align: center;
   padding: 2rem 0;
+}
+
+.partial-warning {
+  margin-bottom: 0.75rem;
 }
 
 .results-list {

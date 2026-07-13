@@ -7,7 +7,9 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
+import Avatar from 'primevue/avatar'
 import { useTitlesStore } from '../stores/titles'
+import { useProfileStore } from '../stores/profile'
 import type { TitleStatus, TitleType } from '../types/database'
 import type { Categoria, Stato, Titolo } from '../lib/titoliUi'
 import { statoColor } from '../lib/titoliUi'
@@ -15,7 +17,15 @@ import HomeTitleCard from '../components/HomeTitleCard.vue'
 
 const router = useRouter()
 const titlesStore = useTitlesStore()
+const profileStore = useProfileStore()
 const { t } = useI18n({ useScope: 'global' })
+
+const avatarLoadError = ref(false)
+const avatarUrl = computed(() => (avatarLoadError.value ? null : profileStore.profile?.avatar_url ?? null))
+
+function goToProfile() {
+  router.push({ name: 'settings-account' })
+}
 
 function toCategoria(type: TitleType): Categoria {
   if (type === 'movie') return 'film'
@@ -50,6 +60,7 @@ const titoli = computed<Titolo[]>(() =>
 onMounted(() => {
   titlesStore.fetchTitles()
   titlesStore.fetchAllEpisodes()
+  if (!profileStore.profile) profileStore.fetchProfile()
 })
 
 const query = ref('')
@@ -114,6 +125,15 @@ function apriDettaglio(t: Titolo) {
         <h1>WatchNote</h1>
         <p>{{ t('home.titleCount', { count: titoli.length }) }}</p>
       </div>
+      <button type="button" class="profile-avatar-btn" @click="goToProfile">
+        <span v-if="profileStore.profile?.nickname" class="profile-nickname">{{ profileStore.profile.nickname }}</span>
+        <Avatar
+          :image="avatarUrl ?? undefined"
+          :icon="!avatarUrl ? 'pi pi-user' : undefined"
+          shape="circle"
+          @error="avatarLoadError = true"
+        />
+      </button>
     </header>
 
     <div class="home-content">
@@ -250,6 +270,37 @@ function apriDettaglio(t: Titolo) {
   margin: 0.1rem 0 0;
   font-size: 0.78rem;
   color: var(--bg-muted-text);
+}
+
+.profile-avatar-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  max-width: 45%;
+}
+
+.profile-nickname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bg-primary-text);
+}
+
+.profile-avatar-btn :deep(.p-avatar) {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  background: var(--bg-chip);
+  color: var(--bg-primary-text);
+  line-height: 0;
 }
 
 .home-content {

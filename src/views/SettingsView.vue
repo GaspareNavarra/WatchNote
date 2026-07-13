@@ -3,23 +3,28 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Badge from 'primevue/badge'
 import Dialog from 'primevue/dialog'
+import Button from 'primevue/button'
 import SettingsListItem from '../components/SettingsListItem.vue'
 import { useFeatureRequestsStore } from '../stores/featureRequests'
 import { useNotificationsStore } from '../stores/notifications'
 import { useLocaleStore } from '../stores/locale'
+import { useAuthStore } from '../stores/auth'
 import { getAppVersion } from '../lib/appInfo'
 import type { AppLocale } from '../i18n'
 
 const router = useRouter()
 const { t } = useI18n({ useScope: 'global' })
 const toast = useToast()
+const confirm = useConfirm()
 
 const featureRequests = useFeatureRequestsStore()
 const notifications = useNotificationsStore()
 const locale = useLocaleStore()
+const auth = useAuthStore()
 
 const appVersion = ref('')
 const languageDialogVisible = ref(false)
@@ -53,6 +58,25 @@ function goToTheme() {
 
 function goToRequests() {
   router.push({ name: 'settings-requests' })
+}
+
+function goToSecurity() {
+  router.push({ name: 'settings-security' })
+}
+
+function handleLogout() {
+  confirm.require({
+    message: t('settings.session.confirm.message'),
+    header: t('settings.session.confirm.header'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: t('settings.session.confirm.accept'),
+    rejectLabel: t('settings.session.confirm.reject'),
+    acceptProps: { severity: 'danger' },
+    accept: async () => {
+      await auth.signOut()
+      router.push({ name: 'login' })
+    },
+  })
 }
 
 async function handleNotificationsToggle(value: boolean) {
@@ -173,6 +197,28 @@ async function selectLanguage(value: AppLocale) {
             </svg>
           </template>
         </SettingsListItem>
+
+        <SettingsListItem
+          :title="t('settings.security.title')"
+          :subtitle="t('settings.security.subtitle')"
+          @click="goToSecurity"
+        >
+          <template #icon>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </template>
+        </SettingsListItem>
       </div>
 
       <div class="group-label">{{ t('settings.groups.preferences') }}</div>
@@ -230,6 +276,18 @@ async function selectLanguage(value: AppLocale) {
             </svg>
           </template>
         </SettingsListItem>
+      </div>
+
+      <div class="group-label">{{ t('settings.session.groupLabel') }}</div>
+      <div class="card session-card">
+        <Button
+          :label="t('settings.session.logoutButton')"
+          icon="pi pi-sign-out"
+          severity="danger"
+          text
+          class="logout-btn"
+          @click="handleLogout"
+        />
       </div>
 
       <p class="version">{{ t('settings.version', { version: appVersion }) }}</p>
@@ -336,6 +394,17 @@ async function selectLanguage(value: AppLocale) {
 
 .chevron-icon {
   stroke: var(--text-secondary);
+}
+
+.session-card {
+  padding: 4px;
+}
+
+.logout-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 13px 16px;
+  font-weight: 600;
 }
 
 .requests-badge {

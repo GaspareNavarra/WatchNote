@@ -29,6 +29,15 @@ export type EpisodeRow = {
   created_at: string
 }
 
+export type ProfileRow = {
+  id: string
+  nickname: string | null
+  bio: string | null
+  avatar_url: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type FeatureRequestStatus = 'pending' | 'in_review' | 'done' | 'rejected'
 
 export type FeatureRequestRow = {
@@ -63,6 +72,12 @@ export type Database = {
         Row: FeatureRequestRow
         Insert: Partial<FeatureRequestRow> & { title: string; user_id: string }
         Update: Partial<FeatureRequestRow>
+        Relationships: []
+      }
+      profiles: {
+        Row: ProfileRow
+        Insert: Partial<ProfileRow> & { id: string }
+        Update: Partial<ProfileRow>
         Relationships: []
       }
     }

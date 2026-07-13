@@ -41,6 +41,8 @@
   --surface-card: rgba(255, 255, 255, 0.7);
   --surface-chip: rgba(0, 0, 0, 0.045);
   --surface-overlay: #ffffff;
+  --auth-card-from: rgba(255, 255, 255, 0.82);
+  --auth-card-to: rgba(255, 255, 255, 0.92);
 }
 
 :root.dark-mode {
@@ -55,6 +57,8 @@
   --surface-card: rgba(255, 255, 255, 0.035);
   --surface-chip: rgba(255, 255, 255, 0.05);
   --surface-overlay: #16131f;
+  --auth-card-from: rgba(28, 23, 45, 0.92);
+  --auth-card-to: rgba(17, 14, 29, 0.94);
 }
 
 * {
