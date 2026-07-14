@@ -3,6 +3,9 @@ import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(_to, _from, savedPosition) {
+    return savedPosition ?? { top: 0 }
+  },
   routes: [
     {
       path: '/login',
@@ -37,6 +40,13 @@ const router = createRouter({
     {
       path: '/titles/:id',
       name: 'title-detail',
+      component: () => import('../views/TitleDetailView.vue'),
+      props: true,
+      meta: { tab: 'home' },
+    },
+    {
+      path: '/titles/preview/:type/:externalId',
+      name: 'title-preview',
       component: () => import('../views/TitleDetailView.vue'),
       props: true,
       meta: { tab: 'home' },

@@ -3,32 +3,26 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
-import { useTitlesStore } from '../stores/titles'
-import type { EpisodeRow } from '../types/database'
 
-const props = defineProps<{ titleId: string; seasonNumber: number; episodes: EpisodeRow[] }>()
+export type DisplayEpisode = {
+  key: string
+  episodeNumber: number
+  name: string | null
+  watched: boolean
+}
+
+const props = defineProps<{ seasonNumber: number; episodes: DisplayEpisode[]; removable?: boolean }>()
+
+const emit = defineEmits<{
+  toggle: [episodeNumber: number, watched: boolean]
+  markAll: [watched: boolean]
+  remove: [episodeNumber: number]
+}>()
 
 const { t } = useI18n({ useScope: 'global' })
-const titlesStore = useTitlesStore()
 
-const sorted = computed(() => [...props.episodes].sort((a, b) => a.episode_number - b.episode_number))
+const sorted = computed(() => [...props.episodes].sort((a, b) => a.episodeNumber - b.episodeNumber))
 const watchedCount = computed(() => props.episodes.filter((e) => e.watched).length)
-
-async function toggle(episode: EpisodeRow) {
-  await titlesStore.setEpisodeWatched(props.titleId, episode.id, !episode.watched)
-}
-
-async function markAllWatched(watched: boolean) {
-  for (const episode of sorted.value) {
-    if (episode.watched !== watched) {
-      await titlesStore.setEpisodeWatched(props.titleId, episode.id, watched)
-    }
-  }
-}
-
-async function removeEpisode(episode: EpisodeRow) {
-  await titlesStore.deleteEpisode(props.titleId, episode.id)
-}
 </script>
 
 <template>
@@ -37,17 +31,29 @@ async function removeEpisode(episode: EpisodeRow) {
       <h3>{{ t('seasonBlock.title', { number: seasonNumber }) }}</h3>
       <div class="season-actions">
         <span class="count">{{ watchedCount }}/{{ episodes.length }}</span>
-        <Button :label="t('seasonBlock.markAll')" link size="small" @click="markAllWatched(true)" />
-        <Button :label="t('seasonBlock.clear')" link size="small" @click="markAllWatched(false)" />
+        <Button :label="t('seasonBlock.markAll')" link size="small" @click="emit('markAll', true)" />
+        <Button :label="t('seasonBlock.clear')" link size="small" @click="emit('markAll', false)" />
       </div>
     </div>
     <ul class="episode-list">
-      <li v-for="episode in sorted" :key="episode.id" class="episode-row">
+      <li v-for="episode in sorted" :key="episode.key" class="episode-row">
         <label class="episode-label">
-          <Checkbox :model-value="episode.watched" binary @update:model-value="toggle(episode)" />
-          <span>{{ t('seasonBlock.episode', { number: episode.episode_number }) }}<template v-if="episode.name"> — {{ episode.name }}</template></span>
+          <Checkbox
+            :model-value="episode.watched"
+            binary
+            @update:model-value="emit('toggle', episode.episodeNumber, !episode.watched)"
+          />
+          <span>{{ t('seasonBlock.episode', { number: episode.episodeNumber }) }}<template v-if="episode.name"> — {{ episode.name }}</template></span>
         </label>
-        <Button icon="pi pi-times" text rounded size="small" severity="secondary" @click="removeEpisode(episode)" />
+        <Button
+          v-if="removable !== false"
+          icon="pi pi-times"
+          text
+          rounded
+          size="small"
+          severity="secondary"
+          @click="emit('remove', episode.episodeNumber)"
+        />
       </li>
     </ul>
   </div>

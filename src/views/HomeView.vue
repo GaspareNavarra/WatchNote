@@ -15,6 +15,8 @@ import type { Categoria, Stato, Titolo } from '../lib/titoliUi'
 import { statoColor } from '../lib/titoliUi'
 import HomeTitleCard from '../components/HomeTitleCard.vue'
 
+defineOptions({ name: 'HomeView' })
+
 const router = useRouter()
 const titlesStore = useTitlesStore()
 const profileStore = useProfileStore()

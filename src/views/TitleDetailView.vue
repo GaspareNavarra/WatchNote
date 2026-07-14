@@ -4,61 +4,196 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from 'primevue/useconfirm'
 import Button from 'primevue/button'
-import InputNumber from 'primevue/inputnumber'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
-import Message from 'primevue/message'
-import Card from 'primevue/card'
 import Tag from 'primevue/tag'
 import { useTitlesStore } from '../stores/titles'
-import SeasonBlock from '../components/SeasonBlock.vue'
+import { useAddToLibrary } from '../composables/useAddToLibrary'
+import { getTvDetails, getSeasonEpisodes, getMovieDetails, tmdbPosterUrl } from '../lib/tmdb'
+import { getAnimeDetails, getAnimeEpisodes } from '../lib/anilist'
+import type { UnifiedResult } from '../lib/media'
+import type { TitleType } from '../types/database'
+import SeasonBlock, { type DisplayEpisode } from '../components/SeasonBlock.vue'
 
-const props = defineProps<{ id: string }>()
+// This view serves two routes: `/titles/:id` (a real library item) and
+// `/titles/preview/:type/:externalId` (a search result not yet added). Both render the exact
+// same layout; the only visible difference is the "Aggiungi" action instead of drop/delete, and
+// watching an episode (or marking a movie watched) before adding silently imports it first.
+const props = defineProps<{ id?: string; type?: TitleType; externalId?: string }>()
 
 const titlesStore = useTitlesStore()
 const router = useRouter()
 const confirm = useConfirm()
 const { t } = useI18n({ useScope: 'global' })
+const { importingId, handleImport } = useAddToLibrary()
 
 const loading = ref(true)
-const newSeasonNumber = ref(1)
-const newSeasonEpisodeCount = ref(12)
-const error = ref('')
 
-const title = computed(() => titlesStore.titles.find((t) => t.id === props.id))
-const episodes = computed(() => titlesStore.episodesByTitle[props.id] ?? [])
-const progress = computed(() => titlesStore.progress(props.id))
-const isMovie = computed(() => title.value?.type === 'movie')
+const justAddedId = ref<string | null>(null)
+const previewInfo = ref<{ name: string; overview: string; posterUrl: string | null; year: string | null } | null>(
+  null
+)
+const previewSeasons = ref<{ seasonNumber: number; episodes: { episodeNumber: number; name: string | null }[] }[]>([])
+
+const effectiveId = computed(() => props.id ?? justAddedId.value)
+
+const title = computed(() =>
+  effectiveId.value ? titlesStore.titles.find((t) => t.id === effectiveId.value) : undefined
+)
+const episodes = computed(() => (effectiveId.value ? titlesStore.episodesByTitle[effectiveId.value] ?? [] : []))
+
+const isMovie = computed(() => (effectiveId.value ? title.value?.type === 'movie' : props.type === 'movie'))
 const isDropped = computed(() => title.value?.status === 'dropped')
 const isMovieWatched = computed(() => title.value?.status === 'completed')
 
 const statusLabel = computed(() => (title.value ? t(`titleDetail.status.${title.value.status}`) : ''))
 
-const seasons = computed(() => {
-  const map = new Map<number, typeof episodes.value>()
-  for (const ep of episodes.value) {
-    if (!map.has(ep.season_number)) map.set(ep.season_number, [])
-    map.get(ep.season_number)!.push(ep)
+const displayName = computed(() => (effectiveId.value ? title.value?.name : previewInfo.value?.name) ?? '')
+const displayOverview = computed(
+  () => (effectiveId.value ? title.value?.overview : previewInfo.value?.overview) ?? ''
+)
+const displayPoster = computed(
+  () => (effectiveId.value ? title.value?.poster_url : previewInfo.value?.posterUrl) ?? null
+)
+
+const seasons = computed<{ seasonNumber: number; episodes: DisplayEpisode[] }[]>(() => {
+  if (effectiveId.value) {
+    const map = new Map<number, DisplayEpisode[]>()
+    for (const ep of episodes.value) {
+      if (!map.has(ep.season_number)) map.set(ep.season_number, [])
+      map.get(ep.season_number)!.push({
+        key: ep.id,
+        episodeNumber: ep.episode_number,
+        name: ep.name,
+        watched: ep.watched,
+      })
+    }
+    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([seasonNumber, eps]) => ({ seasonNumber, episodes: eps }))
   }
-  return [...map.entries()].sort((a, b) => a[0] - b[0])
+  return previewSeasons.value.map((s) => ({
+    seasonNumber: s.seasonNumber,
+    episodes: s.episodes.map((e) => ({
+      key: `preview-${s.seasonNumber}-${e.episodeNumber}`,
+      episodeNumber: e.episodeNumber,
+      name: e.name,
+      watched: false,
+    })),
+  }))
 })
+
+const progress = computed(() => {
+  const all = seasons.value.flatMap((s) => s.episodes)
+  const total = all.length
+  const watched = all.filter((e) => e.watched).length
+  return { watched, total, percent: total === 0 ? 0 : Math.round((watched / total) * 100) }
+})
+
+const externalSource = computed(() => (props.type === 'anime' ? 'anilist' : 'tmdb'))
+
+const previewResult = computed<UnifiedResult | null>(() => {
+  if (!previewInfo.value || !props.type || props.externalId === undefined) return null
+  return {
+    id: Number(props.externalId),
+    type: props.type,
+    title: previewInfo.value.name,
+    overview: previewInfo.value.overview,
+    posterUrl: previewInfo.value.posterUrl,
+    year: previewInfo.value.year,
+  }
+})
+
+async function loadPreview() {
+  if (!props.type || !props.externalId) return
+  const externalIdNum = Number(props.externalId)
+
+  if (props.type === 'movie') {
+    const details = await getMovieDetails(externalIdNum)
+    previewInfo.value = {
+      name: details.name,
+      overview: details.overview,
+      posterUrl: tmdbPosterUrl(details.posterPath),
+      year: details.year,
+    }
+  } else if (props.type === 'series') {
+    const details = await getTvDetails(externalIdNum)
+    previewInfo.value = {
+      name: details.name,
+      overview: details.overview,
+      posterUrl: tmdbPosterUrl(details.posterPath),
+      year: details.year,
+    }
+    const seasonsData = []
+    for (const season of details.seasons) {
+      const eps = await getSeasonEpisodes(externalIdNum, season.seasonNumber)
+      seasonsData.push({
+        seasonNumber: season.seasonNumber,
+        episodes: eps.map((e) => ({ episodeNumber: e.episodeNumber, name: e.name || null })),
+      })
+    }
+    previewSeasons.value = seasonsData
+  } else {
+    const info = await getAnimeDetails(externalIdNum)
+    previewInfo.value = {
+      name: info.title,
+      overview: info.synopsis,
+      posterUrl: info.imageUrl,
+      year: info.year ? String(info.year) : null,
+    }
+    const eps = await getAnimeEpisodes(externalIdNum)
+    previewSeasons.value =
+      eps.length > 0 ? [{ seasonNumber: 1, episodes: eps.map((e) => ({ episodeNumber: e.episodeNumber, name: e.name })) }] : []
+  }
+}
 
 onMounted(async () => {
   if (titlesStore.titles.length === 0) {
     await titlesStore.fetchTitles()
   }
-  if (!isMovie.value) {
-    await titlesStore.fetchEpisodes(props.id)
-    const existingSeasons = [...new Set(episodes.value.map((e) => e.season_number))]
-    newSeasonNumber.value = existingSeasons.length > 0 ? Math.max(...existingSeasons) + 1 : 1
+
+  if (!props.id && props.type && props.externalId) {
+    const existing = titlesStore.titles.find(
+      (t) =>
+        t.type === props.type && t.external_source === externalSource.value && t.external_id === props.externalId
+    )
+    if (existing) {
+      justAddedId.value = existing.id
+    } else {
+      await loadPreview()
+    }
   }
+
+  if (effectiveId.value && !isMovie.value) {
+    await titlesStore.fetchEpisodes(effectiveId.value)
+  }
+
   loading.value = false
 })
 
+async function ensureAdded(): Promise<string | null> {
+  if (effectiveId.value) return effectiveId.value
+  if (!previewResult.value) return null
+  try {
+    const newTitle = await handleImport(previewResult.value)
+    justAddedId.value = newTitle.id
+    return newTitle.id
+  } catch {
+    return null
+  }
+}
+
+async function handleAddToLibrary() {
+  await ensureAdded()
+}
+
 async function toggleMovieWatched() {
-  await titlesStore.updateTitle(props.id, {
-    status: isMovieWatched.value ? 'plan_to_watch' : 'completed',
-  })
+  if (effectiveId.value) {
+    await titlesStore.updateTitle(effectiveId.value, {
+      status: isMovieWatched.value ? 'plan_to_watch' : 'completed',
+    })
+    return
+  }
+  const newId = await ensureAdded()
+  if (newId) await titlesStore.updateTitle(newId, { status: 'completed' })
 }
 
 async function handleDropToggle() {
@@ -70,47 +205,83 @@ async function handleDropToggle() {
   }
 }
 
-async function handleAddSeason() {
-  error.value = ''
-  try {
-    await titlesStore.addSeason(props.id, newSeasonNumber.value, newSeasonEpisodeCount.value)
-    newSeasonNumber.value += 1
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : t('titleDetail.addSeason.error')
-  }
-}
-
 function handleDeleteTitle() {
   if (!title.value) return
+  const current = title.value
   confirm.require({
-    message: t('titleDetail.deleteConfirm.message', { name: title.value.name }),
+    message: t('titleDetail.deleteConfirm.message', { name: current.name }),
     header: t('titleDetail.deleteConfirm.header'),
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: t('titleDetail.deleteConfirm.accept'),
     rejectLabel: t('titleDetail.deleteConfirm.reject'),
     acceptProps: { severity: 'danger' },
     accept: async () => {
-      await titlesStore.deleteTitle(props.id)
+      await titlesStore.deleteTitle(current.id)
       router.push({ name: 'home' })
     },
   })
+}
+
+async function onToggleEpisode(seasonNumber: number, episodeNumber: number, watched: boolean) {
+  if (effectiveId.value) {
+    const ep = (titlesStore.episodesByTitle[effectiveId.value] ?? []).find(
+      (e) => e.season_number === seasonNumber && e.episode_number === episodeNumber
+    )
+    if (ep) await titlesStore.setEpisodeWatched(effectiveId.value, ep.id, watched)
+    return
+  }
+  if (!watched) return
+  const newId = await ensureAdded()
+  if (!newId) return
+  const ep = (titlesStore.episodesByTitle[newId] ?? []).find(
+    (e) => e.season_number === seasonNumber && e.episode_number === episodeNumber
+  )
+  if (ep) await titlesStore.setEpisodeWatched(newId, ep.id, true)
+}
+
+async function onMarkAllEpisodes(seasonNumber: number, watched: boolean) {
+  if (effectiveId.value) {
+    const seasonEpisodes = (titlesStore.episodesByTitle[effectiveId.value] ?? []).filter(
+      (e) => e.season_number === seasonNumber
+    )
+    for (const ep of seasonEpisodes) {
+      if (ep.watched !== watched) await titlesStore.setEpisodeWatched(effectiveId.value, ep.id, watched)
+    }
+    return
+  }
+  if (!watched) return
+  const newId = await ensureAdded()
+  if (!newId) return
+  const seasonEpisodes = (titlesStore.episodesByTitle[newId] ?? []).filter((e) => e.season_number === seasonNumber)
+  for (const ep of seasonEpisodes) {
+    await titlesStore.setEpisodeWatched(newId, ep.id, true)
+  }
+}
+
+async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
+  if (!effectiveId.value) return
+  const ep = (titlesStore.episodesByTitle[effectiveId.value] ?? []).find(
+    (e) => e.season_number === seasonNumber && e.episode_number === episodeNumber
+  )
+  if (ep) await titlesStore.deleteEpisode(effectiveId.value, ep.id)
 }
 </script>
 
 <template>
   <div class="detail">
-    <RouterLink to="/" class="back">← {{ t('titleDetail.backToList') }}</RouterLink>
+    <button type="button" class="back" @click="router.back()">← {{ t('titleDetail.backToList') }}</button>
 
     <div v-if="loading" class="loading"><ProgressSpinner style="width: 2.5rem; height: 2.5rem" /></div>
-    <p v-else-if="!title">{{ t('titleDetail.notFound') }}</p>
+    <p v-else-if="!displayName">{{ t('titleDetail.notFound') }}</p>
 
     <template v-else>
       <div class="header">
-        <img v-if="title.poster_url" :src="title.poster_url" alt="" class="poster" />
+        <img v-if="displayPoster" :src="displayPoster" alt="" class="poster" />
+        <div v-else class="poster poster-placeholder"><i class="pi pi-image"></i></div>
         <div class="header-info">
-          <h1>{{ title.name }}</h1>
-          <p v-if="title.overview" class="overview">{{ title.overview }}</p>
-          <Tag :value="statusLabel" class="status-tag" />
+          <h1>{{ displayName }}</h1>
+          <p v-if="displayOverview" class="overview">{{ displayOverview }}</p>
+          <Tag v-if="effectiveId" :value="statusLabel" class="status-tag" />
           <template v-if="!isMovie">
             <p class="meta">
               {{ t('titleDetail.progress', { watched: progress.watched, total: progress.total, percent: progress.percent }) }}
@@ -126,22 +297,40 @@ function handleDeleteTitle() {
               :outlined="isMovieWatched"
               @click="toggleMovieWatched"
             />
-            <Button
-              :label="isDropped ? t('titleDetail.actions.resume') : t('titleDetail.actions.drop')"
-              :icon="isDropped ? 'pi pi-refresh' : 'pi pi-ban'"
-              severity="warn"
-              outlined
-              size="small"
-              @click="handleDropToggle"
-            />
-            <Button
-              :label="t('titleDetail.actions.deleteTitle')"
-              icon="pi pi-trash"
-              severity="danger"
-              outlined
-              size="small"
-              @click="handleDeleteTitle"
-            />
+            <template v-if="effectiveId">
+              <Button
+                :label="isDropped ? t('titleDetail.actions.resume') : t('titleDetail.actions.drop')"
+                :icon="isDropped ? 'pi pi-refresh' : 'pi pi-ban'"
+                severity="warn"
+                outlined
+                size="small"
+                @click="handleDropToggle"
+              />
+              <Button
+                :label="t('titleDetail.actions.deleteTitle')"
+                icon="pi pi-trash"
+                severity="danger"
+                outlined
+                size="small"
+                @click="handleDeleteTitle"
+              />
+            </template>
+            <button
+              v-else
+              type="button"
+              class="add-btn"
+              :disabled="importingId !== null"
+              @click="handleAddToLibrary"
+            >
+              <span v-if="importingId !== null" class="spinner"></span>
+              <template v-else>
+                <svg class="add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>{{ t('searchResultTile.add') }}</span>
+              </template>
+            </button>
           </div>
         </div>
       </div>
@@ -149,33 +338,16 @@ function handleDeleteTitle() {
       <template v-if="!isMovie">
         <div class="seasons">
           <SeasonBlock
-            v-for="[seasonNumber, seasonEpisodes] in seasons"
-            :key="seasonNumber"
-            :title-id="props.id"
-            :season-number="seasonNumber"
-            :episodes="seasonEpisodes"
+            v-for="season in seasons"
+            :key="season.seasonNumber"
+            :season-number="season.seasonNumber"
+            :episodes="season.episodes"
+            :removable="!!effectiveId"
+            @toggle="(episodeNumber, watched) => onToggleEpisode(season.seasonNumber, episodeNumber, watched)"
+            @mark-all="(watched) => onMarkAllEpisodes(season.seasonNumber, watched)"
+            @remove="(episodeNumber) => onRemoveEpisode(season.seasonNumber, episodeNumber)"
           />
         </div>
-
-        <Card>
-          <template #title>{{ t('titleDetail.addSeason.title') }}</template>
-          <template #content>
-            <form class="add-season" @submit.prevent="handleAddSeason">
-              <div class="fields">
-                <label class="field">
-                  <span>{{ t('titleDetail.addSeason.seasonNumber') }}</span>
-                  <InputNumber v-model="newSeasonNumber" :min="1" show-buttons button-layout="horizontal" />
-                </label>
-                <label class="field">
-                  <span>{{ t('titleDetail.addSeason.episodeCount') }}</span>
-                  <InputNumber v-model="newSeasonEpisodeCount" :min="1" show-buttons button-layout="horizontal" />
-                </label>
-              </div>
-              <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
-              <Button type="submit" :label="t('titleDetail.addSeason.submit')" />
-            </form>
-          </template>
-        </Card>
       </template>
     </template>
   </div>
@@ -189,10 +361,16 @@ function handleDeleteTitle() {
 }
 
 .back {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 1rem;
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
   font-size: 0.9rem;
-  text-decoration: none;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .loading {
@@ -213,6 +391,15 @@ function handleDeleteTitle() {
   object-fit: cover;
   border-radius: 8px;
   flex-shrink: 0;
+}
+
+.poster-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-chip);
+  color: var(--text-muted);
+  font-size: 1.75rem;
 }
 
 .header-info h1 {
@@ -239,6 +426,7 @@ function handleDeleteTitle() {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .progress {
@@ -254,23 +442,58 @@ function handleDeleteTitle() {
   margin-bottom: 1.5rem;
 }
 
-.add-season {
+.add-btn {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--p-primary-color) 70%, white 30%),
+    color-mix(in srgb, var(--p-primary-color) 85%, white 15%)
+  );
+  color: #140f24;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--p-primary-color) 85%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.fields {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+.add-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -10px color-mix(in srgb, var(--p-primary-color) 95%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.9rem;
-  flex: 1;
+.add-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+  transform: none;
+}
+
+.add-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(20, 15, 36, 0.35);
+  border-top-color: #140f24;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

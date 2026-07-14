@@ -31,7 +31,16 @@ export type TmdbTvDetails = {
   name: string
   overview: string
   posterPath: string | null
+  year: string | null
   seasons: TmdbSeasonSummary[]
+}
+
+export type TmdbMovieDetails = {
+  id: number
+  name: string
+  overview: string
+  posterPath: string | null
+  year: string | null
 }
 
 export type TmdbEpisodeSummary = {
@@ -143,6 +152,7 @@ export async function getTvDetails(tvId: number): Promise<TmdbTvDetails> {
     name: string
     overview: string
     poster_path: string | null
+    first_air_date: string | null
     seasons: { season_number: number; name: string; episode_count: number }[]
   }>(`/tv/${tvId}`)
 
@@ -151,6 +161,7 @@ export async function getTvDetails(tvId: number): Promise<TmdbTvDetails> {
     name: data.name,
     overview: data.overview,
     posterPath: data.poster_path,
+    year: data.first_air_date ? data.first_air_date.slice(0, 4) : null,
     seasons: data.seasons
       .filter((s) => s.season_number > 0)
       .map((s) => ({
@@ -158,6 +169,24 @@ export async function getTvDetails(tvId: number): Promise<TmdbTvDetails> {
         name: s.name,
         episodeCount: s.episode_count,
       })),
+  }
+}
+
+export async function getMovieDetails(movieId: number): Promise<TmdbMovieDetails> {
+  const data = await tmdbFetch<{
+    id: number
+    title: string
+    overview: string
+    poster_path: string | null
+    release_date: string | null
+  }>(`/movie/${movieId}`)
+
+  return {
+    id: data.id,
+    name: data.title,
+    overview: data.overview,
+    posterPath: data.poster_path,
+    year: data.release_date ? data.release_date.slice(0, 4) : null,
   }
 }
 

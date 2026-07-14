@@ -1,6 +1,6 @@
 export type TitleType = 'movie' | 'series' | 'anime'
 export type TitleStatus = 'plan_to_watch' | 'watching' | 'completed' | 'dropped'
-export type ExternalSource = 'tmdb' | 'jikan'
+export type ExternalSource = 'tmdb' | 'jikan' | 'anilist'
 
 export type TitleRow = {
   id: string

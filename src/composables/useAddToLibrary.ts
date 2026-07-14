@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useTitlesStore } from '../stores/titles'
 import { getTvDetails, getSeasonEpisodes } from '../lib/tmdb'
-import { getAnimeEpisodes } from '../lib/jikan'
+import { getAnimeEpisodes } from '../lib/anilist'
 import type { UnifiedResult } from '../lib/media'
 
 export function useAddToLibrary() {
@@ -20,7 +20,7 @@ export function useAddToLibrary() {
         type: result.type,
         poster_url: result.posterUrl,
         overview: result.overview || null,
-        external_source: result.type === 'anime' ? 'jikan' : 'tmdb',
+        external_source: result.type === 'anime' ? 'anilist' : 'tmdb',
         external_id: String(result.id),
       })
 

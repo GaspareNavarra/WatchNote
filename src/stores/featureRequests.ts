@@ -28,11 +28,14 @@ export const useFeatureRequestsStore = defineStore('featureRequests', {
   },
   actions: {
     async fetchRequests() {
+      const auth = useAuthStore()
+      if (!auth.user) return
       this.loading = true
       this.error = null
       const { data, error } = await supabase
         .from('feature_requests')
         .select('*')
+        .eq('user_id', auth.user.id)
         .order('created_at', { ascending: false })
       if (error) {
         this.error = error.message

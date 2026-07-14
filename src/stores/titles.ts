@@ -110,20 +110,6 @@ export const useTitlesStore = defineStore('titles', {
       return data ?? []
     },
 
-    async addSeason(titleId: string, seasonNumber: number, episodeCount: number) {
-      const rows = Array.from({ length: episodeCount }, (_, i) => ({
-        title_id: titleId,
-        season_number: seasonNumber,
-        episode_number: i + 1,
-      }))
-      const { data, error } = await supabase.from('episodes').insert(rows).select()
-      if (error) throw error
-      const existing = this.episodesByTitle[titleId] ?? []
-      this.episodesByTitle[titleId] = [...existing, ...(data ?? [])]
-      await this.recomputeStatus(titleId)
-      return data ?? []
-    },
-
     async importEpisodes(titleId: string, seasonNumber: number, episodes: ImportedEpisode[]) {
       if (episodes.length === 0) return []
       const rows = episodes.map((e) => ({

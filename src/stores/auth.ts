@@ -62,11 +62,6 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
     },
 
-    async updateEmail(newEmail: string) {
-      const { error } = await supabase.auth.updateUser({ email: newEmail })
-      if (error) throw error
-    },
-
     async updatePassword(newPassword: string) {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error

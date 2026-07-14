@@ -1,6 +1,6 @@
 import type { TitleType } from '../types/database'
 import { tmdbPosterUrl, type TmdbSearchResult } from './tmdb'
-import type { JikanSearchResult } from './jikan'
+import type { AniListSearchResult } from './anilist'
 
 export type UnifiedResult = {
   id: number
@@ -23,7 +23,7 @@ export function fromTmdb(r: TmdbSearchResult): UnifiedResult {
   }
 }
 
-export function fromJikan(r: JikanSearchResult): UnifiedResult {
+export function fromAniList(r: AniListSearchResult): UnifiedResult {
   return {
     id: r.id,
     type: 'anime',
@@ -44,8 +44,8 @@ function normalizeTitle(title: string): string {
     .trim()
 }
 
-// TMDB TV search and Jikan anime search often surface the same show. When a 'series' result
-// (from TMDB) matches an 'anime' result (from Jikan) by title, keep only the Jikan one — it's
+// TMDB TV search and AniList anime search often surface the same show. When a 'series' result
+// (from TMDB) matches an 'anime' result (from AniList) by title, keep only the AniList one — it's
 // the dedicated anime source, so its metadata (episodes, poster, synopsis) is more reliable.
 export function dedupeAnimeAndSeries(items: UnifiedResult[]): UnifiedResult[] {
   const animeEntries = items

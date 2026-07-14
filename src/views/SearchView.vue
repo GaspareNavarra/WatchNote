@@ -7,9 +7,11 @@ import InputIcon from 'primevue/inputicon'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import { searchMovies, searchTv, getTrendingAll } from '../lib/tmdb'
-import { searchAnime, getTopAnime } from '../lib/jikan'
-import { fromTmdb, fromJikan, dedupeAnimeAndSeries, type UnifiedResult } from '../lib/media'
+import { searchAnime, getTopAnime } from '../lib/anilist'
+import { fromTmdb, fromAniList, dedupeAnimeAndSeries, type UnifiedResult } from '../lib/media'
 import SearchResultTile from '../components/SearchResultTile.vue'
+
+defineOptions({ name: 'SearchView' })
 
 const { t } = useI18n({ useScope: 'global' })
 const query = ref('')
@@ -22,8 +24,15 @@ const warning = ref('')
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
-function sortByTitle(items: UnifiedResult[]): UnifiedResult[] {
-  return [...items].sort((a, b) => a.title.localeCompare(b.title, 'it', { sensitivity: 'base' }))
+// Anime results are shown first, then movies/series; each group sorted alphabetically.
+const TYPE_PRIORITY: Record<UnifiedResult['type'], number> = { anime: 0, movie: 1, series: 1 }
+
+function sortWithAnimeFirst(items: UnifiedResult[]): UnifiedResult[] {
+  return [...items].sort((a, b) => {
+    const priorityDiff = TYPE_PRIORITY[a.type] - TYPE_PRIORITY[b.type]
+    if (priorityDiff !== 0) return priorityDiff
+    return a.title.localeCompare(b.title, 'it', { sensitivity: 'base' })
+  })
 }
 
 async function loadRecommended() {
@@ -33,7 +42,7 @@ async function loadRecommended() {
   const [trending, topAnime] = await Promise.allSettled([getTrendingAll(), getTopAnime()])
   const items: UnifiedResult[] = []
   if (trending.status === 'fulfilled') items.push(...trending.value.map(fromTmdb))
-  if (topAnime.status === 'fulfilled') items.push(...topAnime.value.map(fromJikan))
+  if (topAnime.status === 'fulfilled') items.push(...topAnime.value.map(fromAniList))
   if (trending.status === 'rejected' && topAnime.status === 'rejected') {
     error.value = t('search.recommendedError')
   } else if (trending.status === 'rejected') {
@@ -41,7 +50,7 @@ async function loadRecommended() {
   } else if (topAnime.status === 'rejected') {
     warning.value = t('search.animeUnavailable')
   }
-  recommended.value = sortByTitle(dedupeAnimeAndSeries(items))
+  recommended.value = sortWithAnimeFirst(dedupeAnimeAndSeries(items))
   loading.value = false
 }
 
@@ -53,7 +62,7 @@ async function runSearch(q: string) {
   const items: UnifiedResult[] = []
   if (movies.status === 'fulfilled') items.push(...movies.value.map(fromTmdb))
   if (tv.status === 'fulfilled') items.push(...tv.value.map(fromTmdb))
-  if (anime.status === 'fulfilled') items.push(...anime.value.map(fromJikan))
+  if (anime.status === 'fulfilled') items.push(...anime.value.map(fromAniList))
   const tmdbFailed = movies.status === 'rejected' && tv.status === 'rejected'
   const animeFailed = anime.status === 'rejected'
   if (tmdbFailed && animeFailed) {
@@ -63,7 +72,7 @@ async function runSearch(q: string) {
   } else if (animeFailed) {
     warning.value = t('search.animeUnavailable')
   }
-  results.value = sortByTitle(dedupeAnimeAndSeries(items))
+  results.value = sortWithAnimeFirst(dedupeAnimeAndSeries(items))
   loading.value = false
 }
 
@@ -124,12 +133,31 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
   margin-bottom: 1.25rem;
 }
 
+.search-field :deep(.p-inputicon) {
+  color: var(--text-muted);
+}
+
 .search-input {
   width: 100%;
 }
 
+.search-field :deep(.p-inputtext) {
+  width: 100%;
+  height: 48px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-chip) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--p-primary-color) 22%, transparent);
+  color: var(--text-primary);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.search-field :deep(.p-inputtext:focus) {
+  border-color: color-mix(in srgb, var(--p-primary-color) 85%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+}
+
 .heading {
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .heading h2 {
@@ -164,6 +192,6 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 </style>
