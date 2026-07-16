@@ -206,7 +206,6 @@ export default {
     errorDetailFallback: 'Something went wrong while importing',
   },
   titleDetail: {
-    backToList: 'Back to list',
     notFound: 'Title not found.',
     status: {
       plan_to_watch: 'Planned',

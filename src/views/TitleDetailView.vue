@@ -258,18 +258,13 @@ async function onMarkAllEpisodes(seasonNumber: number, watched: boolean) {
   }
 }
 
-async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
-  if (!effectiveId.value) return
-  const ep = (titlesStore.episodesByTitle[effectiveId.value] ?? []).find(
-    (e) => e.season_number === seasonNumber && e.episode_number === episodeNumber
-  )
-  if (ep) await titlesStore.deleteEpisode(effectiveId.value, ep.id)
-}
 </script>
 
 <template>
   <div class="detail">
-    <button type="button" class="back" @click="router.back()">← {{ t('titleDetail.backToList') }}</button>
+    <button type="button" class="back" :aria-label="t('common.back')" @click="router.back()">
+      <i class="pi pi-arrow-left"></i>
+    </button>
 
     <div v-if="loading" class="loading"><ProgressSpinner style="width: 2.5rem; height: 2.5rem" /></div>
     <p v-else-if="!displayName">{{ t('titleDetail.notFound') }}</p>
@@ -280,8 +275,8 @@ async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
         <div v-else class="poster poster-placeholder"><i class="pi pi-image"></i></div>
         <div class="header-info">
           <h1>{{ displayName }}</h1>
-          <p v-if="displayOverview" class="overview">{{ displayOverview }}</p>
           <Tag v-if="effectiveId" :value="statusLabel" class="status-tag" />
+          <p v-if="displayOverview" class="overview">{{ displayOverview }}</p>
           <template v-if="!isMovie">
             <p class="meta">
               {{ t('titleDetail.progress', { watched: progress.watched, total: progress.total, percent: progress.percent }) }}
@@ -342,10 +337,8 @@ async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
             :key="season.seasonNumber"
             :season-number="season.seasonNumber"
             :episodes="season.episodes"
-            :removable="!!effectiveId"
             @toggle="(episodeNumber, watched) => onToggleEpisode(season.seasonNumber, episodeNumber, watched)"
             @mark-all="(watched) => onMarkAllEpisodes(season.seasonNumber, watched)"
-            @remove="(episodeNumber) => onRemoveEpisode(season.seasonNumber, episodeNumber)"
           />
         </div>
       </template>
@@ -363,14 +356,25 @@ async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
 .back {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
   margin-bottom: 1rem;
-  border: none;
-  background: none;
-  padding: 0;
-  color: inherit;
-  font-size: 0.9rem;
-  font-family: inherit;
+  border: 1px solid var(--hairline-border);
+  border-radius: 13px;
+  background: var(--surface-chip);
+  color: var(--text-primary);
+  font-size: 18px;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.back:hover {
+  background: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+}
+
+.back:active {
+  background: color-mix(in srgb, var(--p-primary-color) 20%, transparent);
 }
 
 .loading {
@@ -389,8 +393,9 @@ async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
   width: 100px;
   height: 150px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 16px;
   flex-shrink: 0;
+  box-shadow: 0 12px 28px -14px rgba(0, 0, 0, 0.5);
 }
 
 .poster-placeholder {
@@ -404,22 +409,27 @@ async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
 
 .header-info h1 {
   margin: 0 0 0.4rem;
-}
-
-.overview {
-  font-size: 0.9rem;
-  color: var(--p-text-muted-color);
-  margin: 0 0 0.5rem;
-}
-
-.meta {
-  color: var(--p-text-muted-color);
-  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 .status-tag {
   display: inline-block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.overview {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 0.5rem;
+}
+
+.meta {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0 0 0.4rem;
 }
 
 .actions-row {
@@ -429,10 +439,25 @@ async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
   align-items: center;
 }
 
+.actions-row :deep(.p-button) {
+  border-radius: 999px;
+}
+
 .progress {
   max-width: 260px;
-  height: 8px;
+  height: 6px;
   margin-bottom: 0.75rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress :deep(.p-progressbar-value) {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--p-primary-color) 60%, transparent),
+    var(--p-primary-color)
+  );
+  border-radius: 999px;
 }
 
 .seasons {
@@ -450,7 +475,7 @@ async function onRemoveEpisode(seasonNumber: number, episodeNumber: number) {
   height: 38px;
   padding: 0 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 999px;
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--p-primary-color) 70%, white 30%),

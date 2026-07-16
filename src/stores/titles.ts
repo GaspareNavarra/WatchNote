@@ -155,13 +155,6 @@ export const useTitlesStore = defineStore('titles', {
       return data
     },
 
-    async deleteEpisode(titleId: string, episodeId: string) {
-      const { error } = await supabase.from('episodes').delete().eq('id', episodeId)
-      if (error) throw error
-      this.episodesByTitle[titleId] = (this.episodesByTitle[titleId] ?? []).filter((e) => e.id !== episodeId)
-      await this.recomputeStatus(titleId)
-    },
-
     async recomputeStatus(titleId: string) {
       const title = this.titles.find((t) => t.id === titleId)
       if (!title || title.status === 'dropped') return

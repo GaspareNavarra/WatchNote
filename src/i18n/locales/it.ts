@@ -206,7 +206,6 @@ export default {
     errorDetailFallback: "Errore durante l'importazione",
   },
   titleDetail: {
-    backToList: 'Torna alla lista',
     notFound: 'Titolo non trovato.',
     status: {
       plan_to_watch: 'Da vedere',
