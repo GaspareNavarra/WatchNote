@@ -26,6 +26,8 @@ export default {
       saveSuccess: 'Profile updated',
       saveError: 'Something went wrong while saving',
       nicknameTaken: 'This nickname is already taken',
+      editProfile: 'Edit profile',
+      cancel: 'Cancel',
       avatarChange: 'Change photo',
       avatarError: 'Something went wrong while uploading the photo',
       cropTitle: 'Crop photo',

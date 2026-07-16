@@ -32,6 +32,7 @@ const pendingFile = ref<File | null>(null)
 const nickname = ref('')
 const bio = ref('')
 const saving = ref(false)
+const editing = ref(false)
 
 const isDirty = computed(
   () =>
@@ -49,6 +50,7 @@ watch(
 )
 
 const avatarUrl = computed(() => (avatarLoadError.value ? null : profileStore.profile?.avatar_url ?? null))
+const bioDisplay = computed(() => profileStore.profile?.bio || t('settings.account.bioPlaceholder'))
 
 const stats = computed(() => {
   const titles = titlesStore.titles
@@ -112,6 +114,7 @@ async function handleSave() {
   try {
     await profileStore.updateProfile({ nickname: nickname.value.trim(), bio: bio.value.trim() })
     toast.add({ severity: 'success', summary: t('settings.account.saveSuccess'), life: 3000 })
+    editing.value = false
   } catch (e) {
     toast.add({
       severity: 'error',
@@ -122,6 +125,16 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+function toggleEdit() {
+  editing.value = !editing.value
+}
+
+function cancelEdit() {
+  nickname.value = profileStore.profile?.nickname ?? ''
+  bio.value = profileStore.profile?.bio ?? ''
+  editing.value = false
 }
 
 function goToSecurity() {
@@ -148,48 +161,67 @@ function handleLogout() {
   <div class="page">
     <BackButton :to="{ name: 'settings' }" />
     <h1>{{ t('settings.account.title') }}</h1>
-    <p class="email">{{ auth.user?.email }}</p>
 
-    <div class="avatar-section">
-      <button
-        type="button"
-        class="avatar-wrap"
-        :disabled="profileStore.uploading"
-        :aria-label="t('settings.account.avatarChange')"
-        @click="triggerFileSelect"
-      >
-        <Avatar
-          :image="avatarUrl ?? undefined"
-          :icon="!avatarUrl ? 'pi pi-user' : undefined"
-          shape="circle"
-          size="xlarge"
-          class="avatar"
-          @error="avatarLoadError = true"
-        />
-        <div v-if="profileStore.uploading" class="avatar-overlay">
-          <ProgressSpinner style="width: 1.75rem; height: 1.75rem" stroke-width="4" />
-        </div>
-        <span class="avatar-edit">
-          <i class="pi pi-camera"></i>
-        </span>
-      </button>
-      <input ref="fileInput" type="file" accept="image/*" class="hidden-input" @change="handleFileChange" />
-      <button type="button" class="avatar-change-label" @click="triggerFileSelect">
-        {{ t('settings.account.avatarChange') }}
-      </button>
+    <div class="hero-card">
+      <div class="avatar-section">
+        <button
+          type="button"
+          class="avatar-wrap"
+          :disabled="profileStore.uploading"
+          :aria-label="t('settings.account.avatarChange')"
+          @click="triggerFileSelect"
+        >
+          <Avatar
+            :image="avatarUrl ?? undefined"
+            :icon="!avatarUrl ? 'pi pi-user' : undefined"
+            shape="circle"
+            size="xlarge"
+            class="avatar"
+            @error="avatarLoadError = true"
+          />
+          <div v-if="profileStore.uploading" class="avatar-overlay">
+            <ProgressSpinner style="width: 1.75rem; height: 1.75rem" stroke-width="4" />
+          </div>
+          <span class="avatar-edit">
+            <i class="pi pi-camera"></i>
+          </span>
+        </button>
+        <input ref="fileInput" type="file" accept="image/*" class="hidden-input" @change="handleFileChange" />
+        <button type="button" class="avatar-change-label" @click="triggerFileSelect">
+          {{ t('settings.account.avatarChange') }}
+        </button>
+      </div>
+
+      <div class="identity">
+        <div class="nickname-display">{{ profileStore.profile?.nickname || t('settings.account.nicknamePlaceholder') }}</div>
+        <p class="email">{{ auth.user?.email }}</p>
+        <p class="bio-display">{{ bioDisplay }}</p>
+        <button type="button" class="edit-toggle-btn" @click="toggleEdit">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+          </svg>
+          {{ t('settings.account.editProfile') }}
+        </button>
+      </div>
     </div>
 
-    <form class="form" @submit.prevent="handleSave">
-      <label class="field">
-        <span>{{ t('settings.account.nickname') }}</span>
-        <InputText v-model="nickname" :placeholder="t('settings.account.nicknamePlaceholder')" />
-      </label>
-      <label class="field">
-        <span>{{ t('settings.account.bio') }}</span>
-        <Textarea v-model="bio" :placeholder="t('settings.account.bioPlaceholder')" rows="3" autoResize />
-      </label>
-      <Button type="submit" :label="t('settings.account.save')" :loading="saving" :disabled="!isDirty" />
-    </form>
+    <div v-if="editing" class="edit-panel">
+      <form class="form" @submit.prevent="handleSave">
+        <label class="field">
+          <span>{{ t('settings.account.nickname') }}</span>
+          <InputText v-model="nickname" :placeholder="t('settings.account.nicknamePlaceholder')" />
+        </label>
+        <label class="field">
+          <span>{{ t('settings.account.bio') }}</span>
+          <Textarea v-model="bio" :placeholder="t('settings.account.bioPlaceholder')" rows="3" autoResize />
+        </label>
+        <div class="edit-actions">
+          <Button type="button" :label="t('settings.account.cancel')" severity="secondary" outlined @click="cancelEdit" />
+          <Button type="submit" :label="t('settings.account.save')" :loading="saving" :disabled="!isDirty" />
+        </div>
+      </form>
+    </div>
 
     <h3 class="stats-title">{{ t('settings.account.stats.title') }}</h3>
     <div class="stats-grid">
@@ -258,9 +290,23 @@ function handleLogout() {
   padding: 1.25rem;
 }
 
-.email {
-  color: var(--p-text-muted-color);
-  margin-bottom: 1.5rem;
+.page h1 {
+  margin-bottom: 1rem;
+}
+
+.hero-card {
+  position: relative;
+  border-radius: 24px;
+  padding: 26px 20px 22px;
+  margin-bottom: 2rem;
+  background: linear-gradient(
+    180deg,
+    var(--auth-card-from),
+    color-mix(in srgb, var(--p-primary-color) 7%, var(--auth-card-to))
+  );
+  border: 1px solid color-mix(in srgb, var(--p-primary-color) 22%, transparent);
+  box-shadow: 0 20px 45px -24px color-mix(in srgb, var(--p-primary-color) 55%, transparent);
+  text-align: center;
 }
 
 .avatar-section {
@@ -268,7 +314,7 @@ function handleLogout() {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.85rem;
 }
 
 .avatar-wrap {
@@ -332,11 +378,73 @@ function handleLogout() {
   padding: 0;
 }
 
+.identity {
+  margin-top: 4px;
+}
+
+.nickname-display {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.email {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0.2rem 0 0;
+}
+
+.bio-display {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0.6rem 0 0;
+  line-height: 1.4;
+  padding: 0 0.5rem;
+}
+
+.edit-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0.85rem auto 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--surface-chip);
+  border: 1px solid var(--hairline-border);
+  color: var(--p-primary-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.edit-toggle-btn:hover {
+  background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
+}
+
+.edit-panel {
+  border-radius: 20px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  background: var(--surface-card);
+  border: 1px solid var(--hairline-border);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.edit-actions > * {
+  flex: 1;
+}
+
 .form {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin-bottom: 1.75rem;
 }
 
 .field {
@@ -366,21 +474,23 @@ function handleLogout() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.75rem 0.25rem;
-  border-radius: 12px;
-  border: 1px solid var(--p-content-border-color);
+  gap: 0.3rem;
+  padding: 0.9rem 0.35rem;
+  border-radius: 16px;
+  background: var(--surface-chip);
+  border: 1px solid var(--hairline-border);
 }
 
 .stat-value {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 800;
   line-height: 1;
+  color: var(--text-primary);
 }
 
 .stat-label {
   font-size: 0.68rem;
-  color: var(--p-text-muted-color);
+  color: var(--text-muted);
   text-align: center;
 }
 

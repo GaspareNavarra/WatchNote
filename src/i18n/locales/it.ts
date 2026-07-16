@@ -26,6 +26,8 @@ export default {
       saveSuccess: 'Profilo aggiornato',
       saveError: 'Errore durante il salvataggio',
       nicknameTaken: 'Questo nickname è già in uso',
+      editProfile: 'Modifica profilo',
+      cancel: 'Annulla',
       avatarChange: 'Cambia foto',
       avatarError: 'Errore durante il caricamento della foto',
       cropTitle: 'Ritaglia la foto',
