@@ -16,7 +16,7 @@ export interface Titolo {
 export const statoColor: Record<Stato, string> = {
   visto: '#16a34a',
   in_corso: 'var(--p-primary-color)',
-  da_vedere: '#f1f5f9',
+  da_vedere: 'var(--stato-da-vedere)',
   abbandonato: '#ef4444',
 }
 

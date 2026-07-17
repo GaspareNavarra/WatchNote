@@ -44,6 +44,7 @@
   --surface-overlay: #ffffff;
   --auth-card-from: rgba(255, 255, 255, 0.82);
   --auth-card-to: rgba(255, 255, 255, 0.92);
+  --stato-da-vedere: #475569;
 }
 
 :root.dark-mode {
@@ -61,6 +62,7 @@
   --surface-overlay: #16131f;
   --auth-card-from: rgba(28, 23, 45, 0.92);
   --auth-card-to: rgba(17, 14, 29, 0.94);
+  --stato-da-vedere: #f1f5f9;
 }
 
 * {
