@@ -319,8 +319,8 @@ declare
   meta_nickname text;
 begin
   meta_nickname := nullif(trim(new.raw_user_meta_data ->> 'nickname'), '');
-  insert into public.profiles (id, nickname)
-  values (new.id, coalesce(meta_nickname, split_part(new.email, '@', 1)))
+  insert into public.profiles (id, nickname, friend_code)
+  values (new.id, coalesce(meta_nickname, split_part(new.email, '@', 1)), public.generate_friend_code())
   on conflict (id) do nothing;
   return new;
 end;
@@ -382,3 +382,191 @@ drop policy if exists "Users can delete their own avatar" on storage.objects;
 create policy "Users can delete their own avatar"
   on storage.objects for delete
   using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ============================================================
+-- Friend code on profiles
+-- ============================================================
+
+alter table public.profiles add column if not exists friend_code text;
+
+create or replace function public.generate_friend_code()
+returns text
+language plpgsql
+as $$
+declare
+  candidate text;
+begin
+  loop
+    candidate := lpad(floor(random() * 1000000)::text, 6, '0');
+    exit when not exists (select 1 from public.profiles where friend_code = candidate);
+  end loop;
+  return candidate;
+end;
+$$;
+
+update public.profiles set friend_code = public.generate_friend_code() where friend_code is null;
+alter table public.profiles alter column friend_code set not null;
+create unique index if not exists profiles_friend_code_unique_idx on public.profiles (friend_code);
+
+-- lets authenticated users find others by nickname (partial) or friend_code (exact),
+-- without widening the profiles SELECT policy
+create or replace function public.search_profiles(p_query text)
+returns table (id uuid, nickname text, avatar_url text, friend_code text)
+language sql
+security definer set search_path = public
+stable
+as $$
+  select p.id, p.nickname, p.avatar_url, p.friend_code
+  from public.profiles p
+  where p.id <> auth.uid()
+    and (
+      p.nickname ilike '%' || p_query || '%'
+      or p.friend_code = regexp_replace(p_query, '[^0-9]', '', 'g')
+    )
+  order by p.nickname
+  limit 20
+$$;
+
+grant execute on function public.search_profiles(text) to authenticated;
+
+-- ============================================================
+-- Friend requests / friendships
+-- a single row doubles as the friendship once status = 'accepted';
+-- declining a pending request or removing a friend is just deleting the row
+-- ============================================================
+
+create table if not exists public.friend_requests (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid not null references auth.users (id) on delete cascade,
+  receiver_id uuid not null references auth.users (id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (sender_id <> receiver_id)
+);
+
+create unique index if not exists friend_requests_pair_unique_idx
+  on public.friend_requests (least(sender_id, receiver_id), greatest(sender_id, receiver_id));
+
+alter table public.friend_requests enable row level security;
+
+drop policy if exists "Friend requests are viewable by participants" on public.friend_requests;
+create policy "Friend requests are viewable by participants"
+  on public.friend_requests for select
+  using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+drop policy if exists "Friend requests are insertable by sender" on public.friend_requests;
+create policy "Friend requests are insertable by sender"
+  on public.friend_requests for insert
+  with check (auth.uid() = sender_id);
+
+drop policy if exists "Friend requests are updatable by participants" on public.friend_requests;
+create policy "Friend requests are updatable by participants"
+  on public.friend_requests for update
+  using (auth.uid() = sender_id or auth.uid() = receiver_id)
+  with check (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+drop policy if exists "Friend requests are deletable by participants" on public.friend_requests;
+create policy "Friend requests are deletable by participants"
+  on public.friend_requests for delete
+  using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+drop trigger if exists friend_requests_set_updated_at on public.friend_requests;
+create trigger friend_requests_set_updated_at
+  before update on public.friend_requests
+  for each row
+  execute function public.set_updated_at();
+
+-- ============================================================
+-- Conversations + messages (1:1 chat between friends)
+-- ============================================================
+
+create table if not exists public.conversations (
+  id uuid primary key default gen_random_uuid(),
+  user_a uuid not null references auth.users (id) on delete cascade,
+  user_b uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  last_message_at timestamptz not null default now(),
+  check (user_a <> user_b)
+);
+
+create unique index if not exists conversations_pair_unique_idx
+  on public.conversations (least(user_a, user_b), greatest(user_a, user_b));
+
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references public.conversations (id) on delete cascade,
+  sender_id uuid not null references auth.users (id) on delete cascade,
+  body text not null check (char_length(trim(body)) > 0),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists messages_conversation_id_idx on public.messages (conversation_id, created_at);
+
+create or replace function public.is_conversation_participant(p_conversation_id uuid)
+returns boolean
+language sql
+security definer set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.conversations c
+    where c.id = p_conversation_id and (c.user_a = auth.uid() or c.user_b = auth.uid())
+  );
+$$;
+
+create or replace function public.bump_conversation_last_message()
+returns trigger
+language plpgsql
+as $$
+begin
+  update public.conversations set last_message_at = new.created_at where id = new.conversation_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists messages_bump_conversation on public.messages;
+create trigger messages_bump_conversation
+  after insert on public.messages
+  for each row
+  execute function public.bump_conversation_last_message();
+
+alter table public.conversations enable row level security;
+alter table public.messages enable row level security;
+
+drop policy if exists "Conversations are viewable by participants" on public.conversations;
+create policy "Conversations are viewable by participants"
+  on public.conversations for select
+  using (auth.uid() = user_a or auth.uid() = user_b);
+
+drop policy if exists "Conversations are insertable between friends" on public.conversations;
+create policy "Conversations are insertable between friends"
+  on public.conversations for insert
+  with check (
+    (auth.uid() = user_a or auth.uid() = user_b)
+    and exists (
+      select 1 from public.friend_requests fr
+      where fr.status = 'accepted'
+        and ((fr.sender_id = user_a and fr.receiver_id = user_b) or (fr.sender_id = user_b and fr.receiver_id = user_a))
+    )
+  );
+
+drop policy if exists "Messages are viewable by participants" on public.messages;
+create policy "Messages are viewable by participants"
+  on public.messages for select
+  using (public.is_conversation_participant(conversation_id));
+
+drop policy if exists "Messages are insertable by participants" on public.messages;
+create policy "Messages are insertable by participants"
+  on public.messages for insert
+  with check (sender_id = auth.uid() and public.is_conversation_participant(conversation_id));
+
+-- enable realtime delivery for live message updates
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;

@@ -11,7 +11,7 @@ const auth = useAuthStore()
   <div id="app-shell">
     <main :class="{ 'with-nav': auth.isAuthenticated }">
       <RouterView v-slot="{ Component }">
-        <KeepAlive :include="['HomeView', 'SearchView']">
+        <KeepAlive :include="['HomeView', 'SearchView', 'ChatView']">
           <component :is="Component" />
         </KeepAlive>
       </RouterView>

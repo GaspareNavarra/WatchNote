@@ -10,6 +10,7 @@ const activeTab = computed(() => route.meta.tab as string | undefined)
 const items = computed(() => [
   { tab: 'home', to: { name: 'home' }, icon: 'pi pi-home', label: t('nav.home') },
   { tab: 'search', to: { name: 'search' }, icon: 'pi pi-search', label: t('nav.search') },
+  { tab: 'chat', to: { name: 'chat' }, icon: 'pi pi-comments', label: t('nav.chat') },
   { tab: 'settings', to: { name: 'settings' }, icon: 'pi pi-cog', label: t('nav.settings') },
 ])
 </script>

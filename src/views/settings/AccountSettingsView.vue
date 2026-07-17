@@ -33,6 +33,7 @@ const nickname = ref('')
 const bio = ref('')
 const saving = ref(false)
 const editing = ref(false)
+const codeCopied = ref(false)
 
 const isDirty = computed(
   () =>
@@ -137,6 +138,16 @@ function cancelEdit() {
   editing.value = false
 }
 
+async function copyFriendCode() {
+  if (!profileStore.profile?.friend_code) return
+  await navigator.clipboard.writeText(`#${profileStore.profile.friend_code}`)
+  codeCopied.value = true
+  toast.add({ severity: 'success', summary: t('settings.account.friendCodeCopied'), life: 2000 })
+  setTimeout(() => {
+    codeCopied.value = false
+  }, 2000)
+}
+
 function goToSecurity() {
   router.push({ name: 'settings-security' })
 }
@@ -195,6 +206,15 @@ function handleLogout() {
       <div class="identity">
         <div class="nickname-display">{{ profileStore.profile?.nickname || t('settings.account.nicknamePlaceholder') }}</div>
         <p class="email">{{ auth.user?.email }}</p>
+        <button
+          v-if="profileStore.profile?.friend_code"
+          type="button"
+          class="friend-code-btn"
+          @click="copyFriendCode"
+        >
+          <span>{{ t('settings.account.friendCode', { code: profileStore.profile.friend_code }) }}</span>
+          <i :class="codeCopied ? 'pi pi-check' : 'pi pi-copy'"></i>
+        </button>
         <p class="bio-display">{{ bioDisplay }}</p>
         <button type="button" class="edit-toggle-btn" @click="toggleEdit">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
@@ -393,6 +413,26 @@ function handleLogout() {
   font-size: 0.85rem;
   color: var(--text-muted);
   margin: 0.2rem 0 0;
+}
+
+.friend-code-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0.4rem auto 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface-chip);
+  border: 1px solid var(--hairline-border);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.friend-code-btn:hover {
+  background: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
 }
 
 .bio-display {
