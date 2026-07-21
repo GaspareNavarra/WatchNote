@@ -257,6 +257,55 @@ create unique index if not exists profiles_nickname_unique_idx
   on public.profiles (lower(nickname))
   where nickname is not null;
 
+-- ============================================================
+-- Friend code on profiles
+-- defined early: every later statement that creates/backfills a profiles row
+-- (the new-signup trigger, the legacy backfill insert) needs to be able to call
+-- generate_friend_code() and satisfy the not-null constraint below.
+-- ============================================================
+
+alter table public.profiles add column if not exists friend_code text;
+
+create or replace function public.generate_friend_code()
+returns text
+language plpgsql
+as $$
+declare
+  candidate text;
+begin
+  loop
+    candidate := lpad(floor(random() * 1000000)::text, 6, '0');
+    exit when not exists (select 1 from public.profiles where friend_code = candidate);
+  end loop;
+  return candidate;
+end;
+$$;
+
+update public.profiles set friend_code = public.generate_friend_code() where friend_code is null;
+alter table public.profiles alter column friend_code set not null;
+create unique index if not exists profiles_friend_code_unique_idx on public.profiles (friend_code);
+
+-- lets authenticated users find others by nickname (partial) or friend_code (exact),
+-- without widening the profiles SELECT policy
+create or replace function public.search_profiles(p_query text)
+returns table (id uuid, nickname text, avatar_url text, friend_code text)
+language sql
+security definer set search_path = public
+stable
+as $$
+  select p.id, p.nickname, p.avatar_url, p.friend_code
+  from public.profiles p
+  where p.id <> auth.uid()
+    and (
+      p.nickname ilike '%' || p_query || '%'
+      or p.friend_code = regexp_replace(p_query, '[^0-9]', '', 'g')
+    )
+  order by p.nickname
+  limit 20
+$$;
+
+grant execute on function public.search_profiles(text) to authenticated;
+
 -- security definer helper so RLS policies can check admin status without recursing
 create or replace function public.is_admin(p_user_id uuid default auth.uid())
 returns boolean
@@ -349,8 +398,9 @@ $$;
 grant execute on function public.nickname_available(text) to anon, authenticated;
 
 -- backfill for accounts created before this trigger existed
-insert into public.profiles (id, nickname)
-select id, split_part(email, '@', 1) from auth.users
+insert into public.profiles (id, nickname, friend_code)
+select id, split_part(email, '@', 1), public.generate_friend_code()
+from auth.users
 on conflict (id) do nothing;
 
 -- grant admin access to the app owner
@@ -382,52 +432,6 @@ drop policy if exists "Users can delete their own avatar" on storage.objects;
 create policy "Users can delete their own avatar"
   on storage.objects for delete
   using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
-
--- ============================================================
--- Friend code on profiles
--- ============================================================
-
-alter table public.profiles add column if not exists friend_code text;
-
-create or replace function public.generate_friend_code()
-returns text
-language plpgsql
-as $$
-declare
-  candidate text;
-begin
-  loop
-    candidate := lpad(floor(random() * 1000000)::text, 6, '0');
-    exit when not exists (select 1 from public.profiles where friend_code = candidate);
-  end loop;
-  return candidate;
-end;
-$$;
-
-update public.profiles set friend_code = public.generate_friend_code() where friend_code is null;
-alter table public.profiles alter column friend_code set not null;
-create unique index if not exists profiles_friend_code_unique_idx on public.profiles (friend_code);
-
--- lets authenticated users find others by nickname (partial) or friend_code (exact),
--- without widening the profiles SELECT policy
-create or replace function public.search_profiles(p_query text)
-returns table (id uuid, nickname text, avatar_url text, friend_code text)
-language sql
-security definer set search_path = public
-stable
-as $$
-  select p.id, p.nickname, p.avatar_url, p.friend_code
-  from public.profiles p
-  where p.id <> auth.uid()
-    and (
-      p.nickname ilike '%' || p_query || '%'
-      or p.friend_code = regexp_replace(p_query, '[^0-9]', '', 'g')
-    )
-  order by p.nickname
-  limit 20
-$$;
-
-grant execute on function public.search_profiles(text) to authenticated;
 
 -- ============================================================
 -- Friend requests / friendships
