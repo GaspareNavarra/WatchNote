@@ -13,18 +13,43 @@ function otherUserId(conversation: ConversationRow, meId: string) {
   return conversation.user_a === meId ? conversation.user_b : conversation.user_a
 }
 
+export function isConversationUnread(
+  conversation: ConversationRow & { lastMessage: MessageRow | null },
+  meId: string,
+): boolean {
+  if (!conversation.lastMessage) return false
+  if (conversation.lastMessage.sender_id === meId) return false
+  const myLastReadAt = conversation.user_a === meId ? conversation.user_a_last_read_at : conversation.user_b_last_read_at
+  if (!myLastReadAt) return true
+  return new Date(conversation.lastMessage.created_at) > new Date(myLastReadAt)
+}
+
 // Kept outside reactive Pinia state on purpose: Vue's UnwrapRef would strip the
 // RealtimeChannel class instance down to a structural type, breaking supabase.removeChannel().
 let activeChannel: RealtimeChannel | null = null
+// Separate channel kept alive for the whole logged-in session (not just while a
+// conversation screen is open), so new messages can be detected from any tab/page.
+let inboxChannel: RealtimeChannel | null = null
+
+const MESSAGES_PAGE_SIZE = 30
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
     conversations: [] as ConversationWithFriend[],
     messagesByConversation: {} as Record<string, MessageRow[]>,
+    hasMoreByConversation: {} as Record<string, boolean>,
     loading: false,
+    loadingOlder: false,
     sending: false,
     error: null as string | null,
   }),
+  getters: {
+    hasUnread: (state) => {
+      const auth = useAuthStore()
+      if (!auth.user) return false
+      return state.conversations.some((c) => isConversationUnread(c, auth.user!.id))
+    },
+  },
   actions: {
     async fetchConversations() {
       const auth = useAuthStore()
@@ -113,15 +138,50 @@ export const useChatStore = defineStore('chat', {
       return created
     },
 
+    async markConversationRead(conversation: ConversationRow) {
+      const auth = useAuthStore()
+      if (!auth.user) return
+      const readAt = new Date().toISOString()
+      const patch: Partial<ConversationRow> =
+        conversation.user_a === auth.user.id ? { user_a_last_read_at: readAt } : { user_b_last_read_at: readAt }
+      const { error } = await supabase.from('conversations').update(patch).eq('id', conversation.id)
+      if (error) throw error
+      const idx = this.conversations.findIndex((c) => c.id === conversation.id)
+      if (idx !== -1) this.conversations[idx] = { ...this.conversations[idx], ...patch }
+    },
+
     async fetchMessages(conversationId: string) {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(MESSAGES_PAGE_SIZE)
       if (error) throw error
-      this.messagesByConversation[conversationId] = data ?? []
-      return data ?? []
+      const rows = (data ?? []).slice().reverse()
+      this.messagesByConversation[conversationId] = rows
+      this.hasMoreByConversation[conversationId] = (data ?? []).length === MESSAGES_PAGE_SIZE
+      return rows
+    },
+
+    async fetchOlderMessages(conversationId: string) {
+      const existing = this.messagesByConversation[conversationId] ?? []
+      const oldest = existing[0]
+      if (!oldest || this.hasMoreByConversation[conversationId] === false) return []
+      this.loadingOlder = true
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .lt('created_at', oldest.created_at)
+        .order('created_at', { ascending: false })
+        .limit(MESSAGES_PAGE_SIZE)
+      this.loadingOlder = false
+      if (error) throw error
+      const rows = (data ?? []).slice().reverse()
+      this.messagesByConversation[conversationId] = [...rows, ...existing]
+      this.hasMoreByConversation[conversationId] = (data ?? []).length === MESSAGES_PAGE_SIZE
+      return rows
     },
 
     async sendMessage(conversationId: string, body: string) {
@@ -160,6 +220,28 @@ export const useChatStore = defineStore('chat', {
       if (activeChannel) {
         supabase.removeChannel(activeChannel)
         activeChannel = null
+      }
+    },
+
+    // RLS on messages.select already restricts delivery to rows the caller may read
+    // (i.e. their own conversations), so no per-conversation filter is needed here.
+    subscribeToInbox(onInsert: (message: MessageRow) => void) {
+      if (inboxChannel) return inboxChannel
+      inboxChannel = supabase
+        .channel('messages:inbox')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload) => onInsert(payload.new as MessageRow),
+        )
+        .subscribe()
+      return inboxChannel
+    },
+
+    unsubscribeInbox() {
+      if (inboxChannel) {
+        supabase.removeChannel(inboxChannel)
+        inboxChannel = null
       }
     },
   },

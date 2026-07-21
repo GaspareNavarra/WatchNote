@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
@@ -59,7 +59,9 @@ const titoli = computed<Titolo[]>(() =>
   })
 )
 
-onMounted(() => {
+// onActivated also fires on the initial mount for KeepAlive'd components (this view is
+// kept alive in App.vue), so this alone covers both the first visit and every return trip.
+onActivated(() => {
   titlesStore.fetchTitles()
   titlesStore.fetchAllEpisodes()
   if (!profileStore.profile) profileStore.fetchProfile()

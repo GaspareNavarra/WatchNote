@@ -147,7 +147,7 @@ export default {
     },
     notifications: {
       title: 'Notifiche',
-      subtitle: 'Push, email e promemoria',
+      subtitle: 'Ricevi una notifica quando un amico ti scrive',
       permissionDenied: 'Permesso notifiche negato',
     },
     language: {
@@ -244,6 +244,7 @@ export default {
       empty: 'Nessuna chat ancora',
       emptyCta: 'Trova amici',
       noMessages: 'Nessun messaggio',
+      startChat: 'Tocca per iniziare a chattare',
       youPrefix: 'Tu: ',
     },
     friends: {
@@ -282,6 +283,10 @@ export default {
       empty: 'Nessun messaggio ancora. Scrivi per iniziare!',
       placeholder: 'Scrivi un messaggio…',
       send: 'Invia',
+      emoji: 'Emoji',
+    },
+    notification: {
+      fallbackTitle: 'Nuovo messaggio',
     },
   },
   auth: {

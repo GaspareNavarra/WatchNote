@@ -511,6 +511,10 @@ create table if not exists public.conversations (
 create unique index if not exists conversations_pair_unique_idx
   on public.conversations (least(user_a, user_b), greatest(user_a, user_b));
 
+-- per-side "I've read up to here" markers, used to render WhatsApp-style unread state
+alter table public.conversations add column if not exists user_a_last_read_at timestamptz;
+alter table public.conversations add column if not exists user_b_last_read_at timestamptz;
+
 create table if not exists public.messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references public.conversations (id) on delete cascade,
@@ -568,6 +572,12 @@ create policy "Conversations are insertable between friends"
         and ((fr.sender_id = user_a and fr.receiver_id = user_b) or (fr.sender_id = user_b and fr.receiver_id = user_a))
     )
   );
+
+drop policy if exists "Conversations are updatable by participants" on public.conversations;
+create policy "Conversations are updatable by participants"
+  on public.conversations for update
+  using (auth.uid() = user_a or auth.uid() = user_b)
+  with check (auth.uid() = user_a or auth.uid() = user_b);
 
 drop policy if exists "Messages are viewable by participants" on public.messages;
 create policy "Messages are viewable by participants"

@@ -69,6 +69,8 @@ export type ConversationRow = {
   user_b: string
   created_at: string
   last_message_at: string
+  user_a_last_read_at: string | null
+  user_b_last_read_at: string | null
 }
 
 export type MessageRow = {

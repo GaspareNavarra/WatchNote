@@ -147,7 +147,7 @@ export default {
     },
     notifications: {
       title: 'Notifications',
-      subtitle: 'Push, email and reminders',
+      subtitle: 'Get notified when a friend messages you',
       permissionDenied: 'Notification permission denied',
     },
     language: {
@@ -244,6 +244,7 @@ export default {
       empty: 'No chats yet',
       emptyCta: 'Find friends',
       noMessages: 'No messages yet',
+      startChat: 'Tap to start chatting',
       youPrefix: 'You: ',
     },
     friends: {
@@ -282,6 +283,10 @@ export default {
       empty: 'No messages yet. Say hi!',
       placeholder: 'Write a message…',
       send: 'Send',
+      emoji: 'Emoji',
+    },
+    notification: {
+      fallbackTitle: 'New message',
     },
   },
   auth: {
