@@ -2,6 +2,7 @@ export default {
   nav: {
     home: 'Home',
     search: 'Search',
+    chat: 'Chat',
     settings: 'Settings',
   },
   common: {
@@ -28,6 +29,8 @@ export default {
       nicknameTaken: 'This nickname is already taken',
       editProfile: 'Edit profile',
       cancel: 'Cancel',
+      friendCode: 'Your code: #{code}',
+      friendCodeCopied: 'Code copied',
       avatarChange: 'Change photo',
       avatarError: 'Something went wrong while uploading the photo',
       cropTitle: 'Crop photo',
@@ -147,7 +150,7 @@ export default {
     },
     notifications: {
       title: 'Notifications',
-      subtitle: 'Push, email and reminders',
+      subtitle: 'Get notified when a friend messages you',
       permissionDenied: 'Notification permission denied',
     },
     navBar: {
@@ -247,6 +250,58 @@ export default {
     markAll: 'Mark all',
     clear: 'Clear',
     episode: 'Episode {number}',
+  },
+  chat: {
+    title: 'Chat',
+    friendsButton: 'Friends',
+    inbox: {
+      empty: 'No chats yet',
+      emptyCta: 'Find friends',
+      noMessages: 'No messages yet',
+      startChat: 'Tap to start chatting',
+      youPrefix: 'You: ',
+    },
+    friends: {
+      title: 'Friends',
+      subtitle: 'Search users, manage requests and chat with your friends',
+      searchPlaceholder: 'Search by nickname or #123456 code',
+      noResults: 'No users found',
+      add: 'Add',
+      requestSent: 'Request sent',
+      alreadyFriends: 'Friends',
+      accept: 'Accept',
+      decline: 'Decline',
+      cancel: 'Cancel',
+      remove: 'Remove friend',
+      incomingTitle: 'Received requests',
+      outgoingTitle: 'Sent requests',
+      friendsListTitle: 'Your friends',
+      noFriends: "You don't have any friends yet. Search for them above!",
+      removeConfirm: {
+        message: 'Remove {name} from your friends? Your chat with this person will be removed too.',
+        header: 'Confirm removal',
+        accept: 'Remove',
+        reject: 'Cancel',
+      },
+      toast: {
+        searchError: 'Something went wrong while searching',
+        addError: 'Something went wrong while sending the request',
+        acceptError: 'Something went wrong while accepting the request',
+        declineError: 'Something went wrong while declining the request',
+        cancelError: 'Something went wrong while cancelling the request',
+        removeError: 'Something went wrong while removing the friend',
+        openError: 'Something went wrong while opening the chat',
+      },
+    },
+    conversation: {
+      empty: 'No messages yet. Say hi!',
+      placeholder: 'Write a message…',
+      send: 'Send',
+      emoji: 'Emoji',
+    },
+    notification: {
+      fallbackTitle: 'New message',
+    },
   },
   auth: {
     login: {

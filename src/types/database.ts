@@ -35,6 +35,7 @@ export type ProfileRow = {
   bio: string | null
   avatar_url: string | null
   is_admin: boolean
+  friend_code: string
   created_at: string
   updated_at: string
 }
@@ -51,6 +52,42 @@ export type FeatureRequestRow = {
   deletion_reason: string | null
   created_at: string
   updated_at: string
+}
+
+export type FriendRequestStatus = 'pending' | 'accepted'
+
+export type FriendRequestRow = {
+  id: string
+  sender_id: string
+  receiver_id: string
+  status: FriendRequestStatus
+  created_at: string
+  updated_at: string
+}
+
+export type ConversationRow = {
+  id: string
+  user_a: string
+  user_b: string
+  created_at: string
+  last_message_at: string
+  user_a_last_read_at: string | null
+  user_b_last_read_at: string | null
+}
+
+export type MessageRow = {
+  id: string
+  conversation_id: string
+  sender_id: string
+  body: string
+  created_at: string
+}
+
+export type ProfileSearchResult = {
+  id: string
+  nickname: string | null
+  avatar_url: string | null
+  friend_code: string
 }
 
 export type Database = {
@@ -83,12 +120,34 @@ export type Database = {
         Update: Partial<ProfileRow>
         Relationships: []
       }
+      friend_requests: {
+        Row: FriendRequestRow
+        Insert: Partial<FriendRequestRow> & { sender_id: string; receiver_id: string }
+        Update: Partial<FriendRequestRow>
+        Relationships: []
+      }
+      conversations: {
+        Row: ConversationRow
+        Insert: Partial<ConversationRow> & { user_a: string; user_b: string }
+        Update: Partial<ConversationRow>
+        Relationships: []
+      }
+      messages: {
+        Row: MessageRow
+        Insert: Partial<MessageRow> & { conversation_id: string; sender_id: string; body: string }
+        Update: Partial<MessageRow>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
       nickname_available: {
         Args: { p_nickname: string }
         Returns: boolean
+      }
+      search_profiles: {
+        Args: { p_query: string }
+        Returns: ProfileSearchResult[]
       }
     }
   }

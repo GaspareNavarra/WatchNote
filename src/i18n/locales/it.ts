@@ -2,6 +2,7 @@ export default {
   nav: {
     home: 'Home',
     search: 'Cerca',
+    chat: 'Chat',
     settings: 'Impostazioni',
   },
   common: {
@@ -28,6 +29,8 @@ export default {
       nicknameTaken: 'Questo nickname è già in uso',
       editProfile: 'Modifica profilo',
       cancel: 'Annulla',
+      friendCode: 'Il tuo codice: #{code}',
+      friendCodeCopied: 'Codice copiato',
       avatarChange: 'Cambia foto',
       avatarError: 'Errore durante il caricamento della foto',
       cropTitle: 'Ritaglia la foto',
@@ -147,7 +150,7 @@ export default {
     },
     notifications: {
       title: 'Notifiche',
-      subtitle: 'Push, email e promemoria',
+      subtitle: 'Ricevi una notifica quando un amico ti scrive',
       permissionDenied: 'Permesso notifiche negato',
     },
     navBar: {
@@ -247,6 +250,58 @@ export default {
     markAll: 'Segna tutti',
     clear: 'Azzera',
     episode: 'Episodio {number}',
+  },
+  chat: {
+    title: 'Chat',
+    friendsButton: 'Amici',
+    inbox: {
+      empty: 'Nessuna chat ancora',
+      emptyCta: 'Trova amici',
+      noMessages: 'Nessun messaggio',
+      startChat: 'Tocca per iniziare a chattare',
+      youPrefix: 'Tu: ',
+    },
+    friends: {
+      title: 'Amici',
+      subtitle: 'Cerca utenti, gestisci richieste e chatta con i tuoi amici',
+      searchPlaceholder: 'Cerca per nickname o codice #123456',
+      noResults: 'Nessun utente trovato',
+      add: 'Aggiungi',
+      requestSent: 'Richiesta inviata',
+      alreadyFriends: 'Amici',
+      accept: 'Accetta',
+      decline: 'Rifiuta',
+      cancel: 'Annulla',
+      remove: 'Rimuovi amico',
+      incomingTitle: 'Richieste ricevute',
+      outgoingTitle: 'Richieste inviate',
+      friendsListTitle: 'I tuoi amici',
+      noFriends: 'Non hai ancora amici. Cercali qui sopra!',
+      removeConfirm: {
+        message: 'Rimuovere {name} dagli amici? Anche la chat con questa persona verrà rimossa.',
+        header: 'Conferma rimozione',
+        accept: 'Rimuovi',
+        reject: 'Annulla',
+      },
+      toast: {
+        searchError: 'Errore durante la ricerca',
+        addError: "Errore durante l'invio della richiesta",
+        acceptError: "Errore durante l'accettazione della richiesta",
+        declineError: 'Errore durante il rifiuto della richiesta',
+        cancelError: "Errore durante l'annullamento della richiesta",
+        removeError: "Errore durante la rimozione dell'amico",
+        openError: 'Errore durante l\'apertura della chat',
+      },
+    },
+    conversation: {
+      empty: 'Nessun messaggio ancora. Scrivi per iniziare!',
+      placeholder: 'Scrivi un messaggio…',
+      send: 'Invia',
+      emoji: 'Emoji',
+    },
+    notification: {
+      fallbackTitle: 'Nuovo messaggio',
+    },
   },
   auth: {
     login: {

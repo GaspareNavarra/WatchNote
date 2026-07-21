@@ -52,6 +52,25 @@ const router = createRouter({
       meta: { tab: 'home' },
     },
     {
+      path: '/chat',
+      name: 'chat',
+      component: () => import('../views/ChatView.vue'),
+      meta: { tab: 'chat' },
+    },
+    {
+      path: '/chat/friends',
+      name: 'chat-friends',
+      component: () => import('../views/FriendsView.vue'),
+      meta: { tab: 'chat' },
+    },
+    {
+      path: '/chat/with/:friendId',
+      name: 'chat-conversation',
+      component: () => import('../views/ChatConversationView.vue'),
+      props: true,
+      meta: { tab: 'chat' },
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),

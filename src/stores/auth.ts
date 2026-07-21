@@ -2,6 +2,25 @@ import { defineStore } from 'pinia'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { i18n } from '../i18n'
+import { useProfileStore } from './profile'
+import { useTitlesStore } from './titles'
+import { useFriendsStore } from './friends'
+import { useChatStore } from './chat'
+import { useTicketsStore } from './tickets'
+import { useFeatureRequestsStore } from './featureRequests'
+
+// Every store that holds per-account data must be wiped here — otherwise switching
+// accounts without a full page reload leaves the previous user's profile/titles/
+// friends/chats visible until a store happens to refetch on its own.
+function resetUserStores() {
+  useChatStore().unsubscribe()
+  useProfileStore().$reset()
+  useTitlesStore().$reset()
+  useFriendsStore().$reset()
+  useChatStore().$reset()
+  useTicketsStore().$reset()
+  useFeatureRequestsStore().$reset()
+}
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -20,6 +39,11 @@ export const useAuthStore = defineStore('auth', {
       this.initialized = true
 
       supabase.auth.onAuthStateChange((_event, session) => {
+        const previousUserId = this.user?.id ?? null
+        const nextUserId = session?.user.id ?? null
+        if (previousUserId && previousUserId !== nextUserId) {
+          resetUserStores()
+        }
         this.session = session
         this.user = session?.user ?? null
       })
@@ -58,6 +82,7 @@ export const useAuthStore = defineStore('auth', {
     async signOut() {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      resetUserStores()
       this.session = null
       this.user = null
     },
