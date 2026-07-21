@@ -3,11 +3,12 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { useConfirm } from 'primevue/useconfirm'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import Textarea from 'primevue/textarea'
+import Dialog from 'primevue/dialog'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -20,11 +21,15 @@ const store = useTicketsStore()
 const profileStore = useProfileStore()
 const router = useRouter()
 const toast = useToast()
-const confirm = useConfirm()
 const { t, locale } = useI18n({ useScope: 'global' })
 
 const searchQuery = ref('')
 const statusFilter = ref<FeatureRequestStatus | 'all'>('all')
+
+const deleteDialogVisible = ref(false)
+const deleteReason = ref('')
+const pendingDeleteId = ref<string | null>(null)
+const deleting = ref(false)
 
 const statusOptions = computed<{ value: FeatureRequestStatus; label: string }[]>(() => [
   { value: 'pending', label: t('settings.requests.status.pending') },
@@ -127,27 +132,36 @@ async function handleReopen(id: string) {
 }
 
 function handleDelete(id: string) {
-  confirm.require({
-    message: t('settings.tickets.deleteConfirm.message'),
-    header: t('settings.tickets.deleteConfirm.header'),
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: t('settings.tickets.deleteConfirm.accept'),
-    rejectLabel: t('settings.tickets.deleteConfirm.reject'),
-    acceptProps: { severity: 'danger' },
-    accept: async () => {
-      try {
-        await store.deleteTicket(id)
-        toast.add({ severity: 'success', summary: t('settings.tickets.deleteSuccess'), life: 2000 })
-      } catch (e) {
-        toast.add({
-          severity: 'error',
-          summary: t('settings.tickets.deleteError'),
-          detail: e instanceof Error ? e.message : t('settings.tickets.deleteError'),
-          life: 5000,
-        })
-      }
-    },
-  })
+  pendingDeleteId.value = id
+  deleteReason.value = ''
+  deleteDialogVisible.value = true
+}
+
+function cancelDelete() {
+  deleteDialogVisible.value = false
+  pendingDeleteId.value = null
+  deleteReason.value = ''
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId.value || !deleteReason.value.trim()) return
+  deleting.value = true
+  try {
+    await store.deleteTicket(pendingDeleteId.value, deleteReason.value.trim())
+    toast.add({ severity: 'success', summary: t('settings.tickets.deleteSuccess'), life: 2000 })
+    deleteDialogVisible.value = false
+    pendingDeleteId.value = null
+    deleteReason.value = ''
+  } catch (e) {
+    toast.add({
+      severity: 'error',
+      summary: t('settings.tickets.deleteError'),
+      detail: e instanceof Error ? e.message : t('settings.tickets.deleteError'),
+      life: 5000,
+    })
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -231,6 +245,38 @@ function handleDelete(id: string) {
         @click="viewAll"
       />
     </template>
+
+    <Dialog
+      v-model:visible="deleteDialogVisible"
+      modal
+      :header="t('settings.tickets.deleteConfirm.header')"
+      class="delete-dialog"
+      :style="{ width: '26rem', maxWidth: '92vw' }"
+      :closable="!deleting"
+      @update:visible="(v: boolean) => !v && cancelDelete()"
+    >
+      <p class="delete-message">{{ t('settings.tickets.deleteConfirm.message') }}</p>
+      <label class="reason-field">
+        <span>{{ t('settings.tickets.deleteConfirm.reasonLabel') }}</span>
+        <Textarea
+          v-model="deleteReason"
+          :placeholder="t('settings.tickets.deleteConfirm.reasonPlaceholder')"
+          rows="3"
+          autoResize
+          autofocus
+        />
+      </label>
+      <template #footer>
+        <Button :label="t('settings.tickets.deleteConfirm.reject')" text :disabled="deleting" @click="cancelDelete" />
+        <Button
+          :label="t('settings.tickets.deleteConfirm.accept')"
+          severity="danger"
+          :loading="deleting"
+          :disabled="!deleteReason.trim()"
+          @click="confirmDelete"
+        />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -332,5 +378,38 @@ function handleDelete(id: string) {
 
 .status-select {
   flex: 1;
+}
+
+.delete-dialog :deep(.p-dialog) {
+  background: var(--surface-overlay);
+}
+
+.delete-dialog :deep(.p-dialog-header),
+.delete-dialog :deep(.p-dialog-content),
+.delete-dialog :deep(.p-dialog-footer) {
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+.delete-dialog :deep(.p-dialog-title) {
+  color: var(--text-primary);
+}
+
+.delete-message {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.reason-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.reason-field :deep(textarea) {
+  width: 100%;
 }
 </style>

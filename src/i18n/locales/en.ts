@@ -113,6 +113,7 @@ export default {
         deleted: 'Removed',
       },
       deletedNotice: 'This request was removed by an administrator.',
+      previousStatus: 'Was: {status}',
       toast: {
         successSummary: 'Sent',
         successDetail: 'Request sent, thank you!',
@@ -129,8 +130,10 @@ export default {
       updateError: 'Something went wrong while updating the status',
       deleteButton: 'Delete',
       deleteConfirm: {
-        message: 'Delete this ticket? The user will be notified that their request was removed.',
+        message: 'Delete this ticket? The user will see the previous status and the reason you enter below.',
         header: 'Confirm deletion',
+        reasonLabel: 'Reason (visible to the user)',
+        reasonPlaceholder: 'E.g. duplicate of another request already planned',
         accept: 'Delete',
         reject: 'Cancel',
       },

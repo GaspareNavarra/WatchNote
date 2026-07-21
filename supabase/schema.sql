@@ -186,6 +186,15 @@ begin
     check (status in ('pending', 'in_review', 'done', 'rejected', 'deleted'));
 end $$;
 
+-- keep the status a ticket had right before an admin soft-deleted it, plus their stated reason
+alter table public.feature_requests add column if not exists previous_status text;
+alter table public.feature_requests add column if not exists deletion_reason text;
+
+alter table public.feature_requests drop constraint if exists feature_requests_previous_status_check;
+alter table public.feature_requests
+  add constraint feature_requests_previous_status_check
+  check (previous_status is null or previous_status in ('pending', 'in_review', 'done', 'rejected'));
+
 create index if not exists feature_requests_user_id_idx on public.feature_requests (user_id);
 
 drop trigger if exists feature_requests_set_updated_at on public.feature_requests;
@@ -257,6 +266,35 @@ create unique index if not exists profiles_nickname_unique_idx
   on public.profiles (lower(nickname))
   where nickname is not null;
 
+-- ============================================================
+-- Friend code on profiles
+-- (used by the Chat/Friends feature on another branch, but this project shares
+-- one Supabase database across branches — this column may already be NOT NULL
+-- on the live DB, so every statement below that creates a profiles row must
+-- keep setting it. Defined early so generate_friend_code() exists in time.)
+-- ============================================================
+
+alter table public.profiles add column if not exists friend_code text;
+
+create or replace function public.generate_friend_code()
+returns text
+language plpgsql
+as $$
+declare
+  candidate text;
+begin
+  loop
+    candidate := lpad(floor(random() * 1000000)::text, 6, '0');
+    exit when not exists (select 1 from public.profiles where friend_code = candidate);
+  end loop;
+  return candidate;
+end;
+$$;
+
+update public.profiles set friend_code = public.generate_friend_code() where friend_code is null;
+alter table public.profiles alter column friend_code set not null;
+create unique index if not exists profiles_friend_code_unique_idx on public.profiles (friend_code);
+
 -- security definer helper so RLS policies can check admin status without recursing
 create or replace function public.is_admin(p_user_id uuid default auth.uid())
 returns boolean
@@ -319,8 +357,8 @@ declare
   meta_nickname text;
 begin
   meta_nickname := nullif(trim(new.raw_user_meta_data ->> 'nickname'), '');
-  insert into public.profiles (id, nickname)
-  values (new.id, coalesce(meta_nickname, split_part(new.email, '@', 1)))
+  insert into public.profiles (id, nickname, friend_code)
+  values (new.id, coalesce(meta_nickname, split_part(new.email, '@', 1)), public.generate_friend_code())
   on conflict (id) do nothing;
   return new;
 end;
@@ -349,8 +387,9 @@ $$;
 grant execute on function public.nickname_available(text) to anon, authenticated;
 
 -- backfill for accounts created before this trigger existed
-insert into public.profiles (id, nickname)
-select id, split_part(email, '@', 1) from auth.users
+insert into public.profiles (id, nickname, friend_code)
+select id, split_part(email, '@', 1), public.generate_friend_code()
+from auth.users
 on conflict (id) do nothing;
 
 -- grant admin access to the app owner

@@ -63,9 +63,14 @@ export const useTicketsStore = defineStore('tickets', {
     },
 
     async updateStatus(id: string, status: FeatureRequestStatus) {
+      const patch: Partial<FeatureRequestRow> = { status }
+      if (status !== 'deleted') {
+        patch.previous_status = null
+        patch.deletion_reason = null
+      }
       const { data, error } = await supabase
         .from('feature_requests')
-        .update({ status })
+        .update(patch)
         .eq('id', id)
         .select()
         .single()
@@ -75,8 +80,22 @@ export const useTicketsStore = defineStore('tickets', {
       return data
     },
 
-    async deleteTicket(id: string) {
-      return this.updateStatus(id, 'deleted')
+    async deleteTicket(id: string, reason: string) {
+      const current = this.tickets.find((r) => r.id === id)
+      const { data, error } = await supabase
+        .from('feature_requests')
+        .update({
+          status: 'deleted',
+          previous_status: (current?.status ?? null) as FeatureRequestRow['previous_status'],
+          deletion_reason: reason,
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      const idx = this.tickets.findIndex((r) => r.id === id)
+      if (idx !== -1) this.tickets[idx] = data
+      return data
     },
   },
 })
