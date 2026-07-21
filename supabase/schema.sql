@@ -481,6 +481,20 @@ create trigger friend_requests_set_updated_at
   for each row
   execute function public.set_updated_at();
 
+-- lets a user read the profile (nickname/avatar) of anyone they have a friend
+-- request or friendship with, in either direction — needed to render incoming/
+-- outgoing requests, the friends list, and a conversation's counterpart
+drop policy if exists "Profiles are viewable by friend-request participants" on public.profiles;
+create policy "Profiles are viewable by friend-request participants"
+  on public.profiles for select
+  using (
+    exists (
+      select 1 from public.friend_requests fr
+      where (fr.sender_id = auth.uid() and fr.receiver_id = profiles.id)
+         or (fr.receiver_id = auth.uid() and fr.sender_id = profiles.id)
+    )
+  );
+
 -- ============================================================
 -- Conversations + messages (1:1 chat between friends)
 -- ============================================================
