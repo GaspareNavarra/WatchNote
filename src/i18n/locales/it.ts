@@ -113,6 +113,7 @@ export default {
         deleted: 'Rimossa',
       },
       deletedNotice: 'Questa richiesta è stata rimossa da un amministratore.',
+      previousStatus: 'Era: {status}',
       toast: {
         successSummary: 'Inviata',
         successDetail: 'Richiesta inviata, grazie!',
@@ -129,8 +130,10 @@ export default {
       updateError: "Errore durante l'aggiornamento dello stato",
       deleteButton: 'Elimina',
       deleteConfirm: {
-        message: "Eliminare questo ticket? L'utente verrà avvisato che la richiesta è stata rimossa.",
+        message: "Eliminare questo ticket? L'utente vedrà lo stato precedente e il motivo che indichi qui sotto.",
         header: 'Conferma eliminazione',
+        reasonLabel: "Motivo (visibile all'utente)",
+        reasonPlaceholder: "Es. duplicato di un'altra richiesta già pianificata",
         accept: 'Elimina',
         reject: 'Annulla',
       },

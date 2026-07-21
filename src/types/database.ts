@@ -47,6 +47,8 @@ export type FeatureRequestRow = {
   title: string
   description: string | null
   status: FeatureRequestStatus
+  previous_status: Exclude<FeatureRequestStatus, 'deleted'> | null
+  deletion_reason: string | null
   created_at: string
   updated_at: string
 }
