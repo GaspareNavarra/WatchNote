@@ -3,9 +3,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
+import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import { useTitlesStore } from '../stores/titles'
 import { useAddToLibrary } from '../composables/useAddToLibrary'
@@ -24,6 +26,7 @@ const props = defineProps<{ id?: string; type?: TitleType; externalId?: string }
 const titlesStore = useTitlesStore()
 const router = useRouter()
 const confirm = useConfirm()
+const toast = useToast()
 const { t } = useI18n({ useScope: 'global' })
 const { importingId, handleImport } = useAddToLibrary()
 
@@ -47,6 +50,17 @@ const isDropped = computed(() => title.value?.status === 'dropped')
 const isMovieWatched = computed(() => title.value?.status === 'completed')
 
 const statusLabel = computed(() => (title.value ? t(`titleDetail.status.${title.value.status}`) : ''))
+
+const hasMultipleEpisodes = computed(() => episodes.value.length > 1)
+
+const typeOptions = computed<{ value: TitleType; label: string }[]>(() => {
+  const options = [
+    { value: 'movie' as TitleType, label: t('titleDetail.type.movie') },
+    { value: 'series' as TitleType, label: t('titleDetail.type.series') },
+    { value: 'anime' as TitleType, label: t('titleDetail.type.anime') },
+  ]
+  return hasMultipleEpisodes.value ? options.filter((o) => o.value !== 'movie') : options
+})
 
 const displayName = computed(() => (effectiveId.value ? title.value?.name : previewInfo.value?.name) ?? '')
 const displayOverview = computed(
@@ -205,6 +219,27 @@ async function handleDropToggle() {
   }
 }
 
+async function handleTypeChange(newType: TitleType) {
+  if (!title.value || newType === title.value.type) return
+  if (newType === 'movie' && hasMultipleEpisodes.value) return
+  const current = title.value
+  const wasMovie = isMovie.value
+  try {
+    await titlesStore.updateTitle(current.id, { type: newType })
+    if (wasMovie && newType !== 'movie') {
+      await titlesStore.fetchEpisodes(current.id)
+    }
+    toast.add({ severity: 'success', summary: t('titleDetail.typeChanged'), life: 2000 })
+  } catch (e) {
+    toast.add({
+      severity: 'error',
+      summary: t('titleDetail.typeChangeError'),
+      detail: e instanceof Error ? e.message : t('titleDetail.typeChangeError'),
+      life: 5000,
+    })
+  }
+}
+
 function handleDeleteTitle() {
   if (!title.value) return
   const current = title.value
@@ -275,7 +310,17 @@ async function onMarkAllEpisodes(seasonNumber: number, watched: boolean) {
         <div v-else class="poster poster-placeholder"><i class="pi pi-image"></i></div>
         <div class="header-info">
           <h1>{{ displayName }}</h1>
-          <Tag v-if="effectiveId" :value="statusLabel" class="status-tag" />
+          <div v-if="effectiveId" class="badges-row">
+            <Tag :value="statusLabel" class="status-tag" />
+            <Select
+              :model-value="title?.type"
+              :options="typeOptions"
+              option-label="label"
+              option-value="value"
+              class="type-select"
+              @update:model-value="handleTypeChange"
+            />
+          </div>
           <p v-if="displayOverview" class="overview">{{ displayOverview }}</p>
           <template v-if="!isMovie">
             <p class="meta">
@@ -414,9 +459,36 @@ async function onMarkAllEpisodes(seasonNumber: number, watched: boolean) {
   color: var(--text-primary);
 }
 
+.badges-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
 .status-tag {
   display: inline-block;
-  margin-bottom: 0.6rem;
+}
+
+.type-select {
+  height: 26px;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--surface-chip);
+  border: 1px solid var(--hairline-border);
+}
+
+.type-select :deep(.p-select-label) {
+  padding: 0 2rem 0 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.type-select :deep(.p-select-dropdown) {
+  width: 1.5rem;
 }
 
 .overview {

@@ -11,6 +11,7 @@ import Button from 'primevue/button'
 import SettingsListItem from '../components/SettingsListItem.vue'
 import { useFeatureRequestsStore } from '../stores/featureRequests'
 import { useNotificationsStore } from '../stores/notifications'
+import { useNavPreferencesStore } from '../stores/navPreferences'
 import { useLocaleStore } from '../stores/locale'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
@@ -24,6 +25,7 @@ const confirm = useConfirm()
 
 const featureRequests = useFeatureRequestsStore()
 const notifications = useNotificationsStore()
+const navPreferences = useNavPreferencesStore()
 const locale = useLocaleStore()
 const auth = useAuthStore()
 const profileStore = useProfileStore()
@@ -285,6 +287,36 @@ async function selectLanguage(value: AppLocale) {
               class="notif-switch"
               :aria-label="t('settings.notifications.title')"
               @update:model-value="handleNotificationsToggle"
+            />
+          </template>
+        </SettingsListItem>
+
+        <SettingsListItem
+          :title="t('settings.navBar.title')"
+          :subtitle="t('settings.navBar.subtitle')"
+          :clickable="false"
+        >
+          <template #icon>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="15" width="18" height="6" rx="2" ry="2"></rect>
+              <path d="M7 10l5-5 5 5"></path>
+            </svg>
+          </template>
+          <template #trailing>
+            <ToggleSwitch
+              :model-value="navPreferences.autoHide"
+              class="notif-switch"
+              :aria-label="t('settings.navBar.title')"
+              @update:model-value="navPreferences.setAutoHide"
             />
           </template>
         </SettingsListItem>

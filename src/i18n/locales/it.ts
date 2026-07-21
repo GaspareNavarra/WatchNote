@@ -147,6 +147,10 @@ export default {
       subtitle: 'Push, email e promemoria',
       permissionDenied: 'Permesso notifiche negato',
     },
+    navBar: {
+      title: 'Barra di navigazione',
+      subtitle: 'Nascondi durante lo scroll',
+    },
     language: {
       title: 'Lingua',
       dialogTitle: 'Scegli lingua',
@@ -213,6 +217,13 @@ export default {
       completed: 'Completato',
       dropped: 'Abbandonato',
     },
+    type: {
+      movie: 'Film',
+      series: 'Serie',
+      anime: 'Anime',
+    },
+    typeChanged: 'Categoria aggiornata',
+    typeChangeError: 'Errore durante il cambio di categoria',
     progress: '{watched}/{total} episodi visti ({percent}%)',
     actions: {
       markUnwatched: 'Segna da vedere',

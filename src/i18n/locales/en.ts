@@ -147,6 +147,10 @@ export default {
       subtitle: 'Push, email and reminders',
       permissionDenied: 'Notification permission denied',
     },
+    navBar: {
+      title: 'Navigation bar',
+      subtitle: 'Hide it while scrolling',
+    },
     language: {
       title: 'Language',
       dialogTitle: 'Choose language',
@@ -213,6 +217,13 @@ export default {
       completed: 'Completed',
       dropped: 'Dropped',
     },
+    type: {
+      movie: 'Movie',
+      series: 'Series',
+      anime: 'Anime',
+    },
+    typeChanged: 'Category updated',
+    typeChangeError: 'Something went wrong while changing the category',
     progress: '{watched}/{total} episodes watched ({percent}%)',
     actions: {
       markUnwatched: 'Mark as planned',
